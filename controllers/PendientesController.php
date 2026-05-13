@@ -92,6 +92,16 @@ class PendientesController {
         }
     }
 
+    // ─── Row Level Security ───────────────────────────────────────────────────
+
+    private function rls(): array {
+        return [
+            'user_id'   => $_SESSION['user_id']   ?? 0,
+            'user_rol'  => $_SESSION['user_rol']  ?? '',
+            'user_area' => $_SESSION['user_area'] ?? '',
+        ];
+    }
+
     // ─── Acciones ─────────────────────────────────────────────────────────────
 
     public function index() {
@@ -106,7 +116,7 @@ class PendientesController {
             $filters['responsable_id'] = $_SESSION['user_id'];
         }
 
-        $pendientes = $this->pendienteModel->getAll($filters);
+        $pendientes = $this->pendienteModel->getAll($filters, $this->rls());
         $usuarios   = $this->userModel->getAll();
 
         require __DIR__ . '/../views/pendientes/index.php';
@@ -169,7 +179,11 @@ class PendientesController {
             exit();
         }
 
-        $pendiente    = $this->pendienteModel->findById($id);
+        $pendiente = $this->pendienteModel->findById($id, $this->rls());
+        if (!$pendiente) {
+            header('Location: index.php?action=pendientes_list');
+            exit();
+        }
         $seguimientos = $this->seguimientoModel->getByPendiente($id);
         $usuarios     = $this->userModel->getAll();
 
@@ -267,7 +281,7 @@ class PendientesController {
             $filters['responsable_id'] = $_SESSION['user_id'];
         }
 
-        $pendientes = $this->pendienteModel->getAll($filters);
+        $pendientes = $this->pendienteModel->getAll($filters, $this->rls());
 
         usort($pendientes, function($a, $b) {
             $dateA = strtotime($a['fecha_compromiso']);
@@ -292,7 +306,7 @@ class PendientesController {
             'tipo'           => $_GET['tipo'] ?? '',
             'responsable_id' => $_GET['responsable_id'] ?? ''
         ];
-        $pendientes = $this->pendienteModel->getAll($filters);
+        $pendientes = $this->pendienteModel->getAll($filters, $this->rls());
 
         header('Content-Type: text/csv; charset=utf-8');
         header('Content-Disposition: attachment; filename=compromisos_comite_' . date('Y-m-d') . '.csv');

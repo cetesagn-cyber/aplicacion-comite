@@ -17,8 +17,17 @@ class ProyectosController {
         $this->userModel = new User();
     }
 
+    private function rls(): array {
+        return [
+            'user_id'   => $_SESSION['user_id']   ?? 0,
+            'user_rol'  => $_SESSION['user_rol']  ?? '',
+            'user_area' => $_SESSION['user_area'] ?? '',
+        ];
+    }
+
     public function index() {
-        $proyectos = $this->proyectoModel->getAll();
+        $rls      = $this->rls();
+        $proyectos = $this->proyectoModel->getAll($rls);
         $objetivosAgrupados = $this->objetivoModel->getAllGroupedByYear();
 
         // Cargar pendientes de cada proyecto
@@ -35,7 +44,7 @@ class ProyectosController {
         $directivos = array_filter($usuarios, fn($u) => $u['rol'] === 'director');
 
         // Pendientes sin proyecto (para vincular)
-        $pendientesSinProyecto = $pendienteModel->getAll(['proyecto_id' => 'NULL']);
+        $pendientesSinProyecto = $pendienteModel->getAll(['proyecto_id' => 'NULL'], $rls);
 
         require __DIR__ . '/../views/proyectos/index.php';
     }

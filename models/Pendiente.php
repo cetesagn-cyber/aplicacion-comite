@@ -43,30 +43,46 @@ class Pendiente {
         return $stmt->execute($filteredData);
     }
 
-    public function findById($id) {
+    // ─── Row Level Security ───────────────────────────────────────────────────
+    // Devuelve un fragmento WHERE y sus parámetros para restringir filas según
+    // el rol del usuario. Los directores solo ven pendientes que crearon, tienen
+    // asignados, o cuyo responsable pertenece a su misma área.
+    // El alias $uResp debe coincidir con el JOIN de usuarios del responsable.
+    private function rlsClause(array $rls, string $uResp = 'u'): array {
+        if (empty($rls) || ($rls['user_rol'] ?? '') !== 'director') {
+            return ['where' => '', 'params' => []];
+        }
+        return [
+            'where'  => " AND (p.creado_por = ? OR p.responsable_id = ? OR {$uResp}.area = ?)",
+            'params' => [(int)$rls['user_id'], (int)$rls['user_id'], (string)($rls['user_area'] ?? '')],
+        ];
+    }
+
+    public function findById($id, array $rls = []) {
+        $rls_c = $this->rlsClause($rls, 'u2');
         $sql = "SELECT p.*, u1.nombre as creador, u2.nombre as responsable, u2.area as responsable_area,
                         u3.nombre as solicitado_por_nombre,
                         o.titulo as objetivo_titulo, o.porcentaje_avance as objetivo_porcentaje, o.fecha_ultimo_avance as objetivo_fecha,
                         pr.titulo as proyecto_titulo
-                FROM pendientes p 
-                JOIN usuarios u1 ON p.creado_por = u1.id 
+                FROM pendientes p
+                JOIN usuarios u1 ON p.creado_por = u1.id
                 JOIN usuarios u2 ON p.responsable_id = u2.id
                 LEFT JOIN usuarios u3 ON p.solicitado_por_id = u3.id
                 LEFT JOIN objetivos o ON p.objetivo_id = o.id
                 LEFT JOIN proyectos pr ON p.proyecto_id = pr.id
-                WHERE p.id = ?";
+                WHERE p.id = ?" . $rls_c['where'];
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([$id]);
+        $stmt->execute(array_merge([$id], $rls_c['params']));
         return $stmt->fetch();
     }
 
-    public function getAll($filters = []) {
+    public function getAll($filters = [], array $rls = []) {
         $sql = "SELECT p.*, u.nombre as responsable, u.area as responsable_area,
                         us.nombre as solicitado_por_nombre
-                FROM pendientes p 
+                FROM pendientes p
                 JOIN usuarios u ON p.responsable_id = u.id
                 LEFT JOIN usuarios us ON p.solicitado_por_id = us.id";
-        
+
         $where = [];
         $params = [];
 
@@ -99,6 +115,19 @@ class Pendiente {
             }
         }
 
+        // RLS: director ve solo sus pendientes o los de su área
+        $rls_c = $this->rlsClause($rls);
+        if ($rls_c['where'] !== '') {
+            // El fragmento empieza con " AND "; lo convertimos al primer WHERE si no hay otros
+            if (empty($where)) {
+                $where[]  = ltrim(ltrim($rls_c['where'], ' AND '));
+                $params   = array_merge($params, $rls_c['params']);
+            } else {
+                $where[]  = ltrim(ltrim($rls_c['where'], ' AND '));
+                $params   = array_merge($params, $rls_c['params']);
+            }
+        }
+
         if (count($where) > 0) {
             $sql .= " WHERE " . implode(" AND ", $where);
         }
@@ -110,7 +139,7 @@ class Pendiente {
         return $stmt->fetchAll();
     }
 
-    public function getStats() {
+    public function getStats(array $rls = []) {
         $stats = [
             'estados' => [],
             'impactos' => [
@@ -124,12 +153,25 @@ class Pendiente {
             'cumplimiento' => 0
         ];
 
+        $rlsJoin  = '';
+        $rlsWhere = '';
+        $rlsParams = [];
+        if (!empty($rls) && ($rls['user_rol'] ?? '') === 'director') {
+            $rlsJoin   = " JOIN usuarios u ON p.responsable_id = u.id";
+            $rlsWhere  = " WHERE (p.creado_por = ? OR p.responsable_id = ? OR u.area = ?)";
+            $rlsParams = [(int)$rls['user_id'], (int)$rls['user_id'], (string)($rls['user_area'] ?? '')];
+        }
+
         // Por estado
-        $stmt = $this->db->query("SELECT estado, COUNT(*) as total FROM pendientes GROUP BY estado");
+        $stmt = $this->db->prepare(
+            "SELECT p.estado, COUNT(*) as total FROM pendientes p{$rlsJoin}{$rlsWhere} GROUP BY p.estado"
+        );
+        $stmt->execute($rlsParams);
         $stats['estados'] = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 
         // Por impacto (SET)
-        $stmt = $this->db->query("SELECT impacto FROM pendientes");
+        $stmt = $this->db->prepare("SELECT p.impacto FROM pendientes p{$rlsJoin}{$rlsWhere}");
+        $stmt->execute($rlsParams);
         while ($row = $stmt->fetch()) {
             $impacts = explode(',', $row['impacto']);
             foreach ($impacts as $imp) {
@@ -140,14 +182,17 @@ class Pendiente {
         }
 
         // Pendientes activos por responsable (excluye cerrados)
-        $stmt = $this->db->query(
-            "SELECT u.nombre, COUNT(*) as total 
-             FROM pendientes p 
-             JOIN usuarios u ON p.responsable_id = u.id 
-             WHERE p.estado != 'cerrado'
-             GROUP BY u.nombre 
+        $extraWhere = $rlsWhere !== ''
+            ? $rlsWhere . " AND p.estado != 'cerrado'"
+            : " WHERE p.estado != 'cerrado'";
+        $joinClause = $rlsJoin !== '' ? $rlsJoin : " JOIN usuarios u ON p.responsable_id = u.id";
+        $stmt = $this->db->prepare(
+            "SELECT u.nombre, COUNT(*) as total
+             FROM pendientes p{$joinClause}{$extraWhere}
+             GROUP BY u.nombre
              ORDER BY total DESC"
         );
+        $stmt->execute($rlsParams);
         $stats['responsables'] = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 
         // Calcular cumplimiento %
