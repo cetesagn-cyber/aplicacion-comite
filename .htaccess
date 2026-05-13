@@ -1,0 +1,31 @@
+# Seguridad - Aplicación Comité
+
+# Deshabilitar listado de directorios
+Options -Indexes
+
+# Headers de seguridad
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set X-XSS-Protection "1; mode=block"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com https://fonts.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none';"
+    Header always set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+</IfModule>
+
+# Bloquear acceso al archivo .env
+<Files ".env">
+    Require all denied
+</Files>
+
+# Bloquear acceso al directorio de logs
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^logs(/|$) - [F,L]
+</IfModule>
+
+# Bloquear scripts de mantenimiento, migración y debug (solo CLI)
+<FilesMatch "^(fix_admin|fix_admin_pass|reset_admin|reset_all|reset_all_passwords|test_db|setup_db|seed_directivos|check_admin|debug_tipos|migrate_acciones|migrate_contribucion|migrate_delegado_a|migrate_estado_avance|migrate_fecha_inicio|migrate_fecha_original|migrate_fechas_detalle|migrate_naturaleza|migrate_objetivos|migrate_pendientes_proyecto|migrate_porcentaje_y_objetivos|migrate_proyectos|migrate_proyectos_fecha|migrate_proyectos_responsable|migrate_solicitado)\.php$">
+    Require all denied
+</FilesMatch>

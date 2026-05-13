@@ -1,0 +1,23 @@
+# PHP
+vendor/
+composer.lock
+
+# OS
+.DS_Store
+Thumbs.db
+
+# VS Code
+.vscode/
+
+# Database / Scratch
+scratch/
+uploads/
+*.log
+
+# Environment
+.env
+
+# Backups y datos sensibles
+database/backup*.sql
+logs/
+.claude/
