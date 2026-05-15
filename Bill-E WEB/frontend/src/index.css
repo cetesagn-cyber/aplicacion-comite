@@ -1,0 +1,52 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: 'Montserrat';
+  src: url('/fonts/Montserrat-VariableFont_wght.ttf') format('truetype');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+
+@theme {
+  --font-sans: "Montserrat", "Inter", sans-serif;
+  --font-heading: "Montserrat", "Inter", sans-serif;
+
+  /* ── Rojo corporativo Tequendama (#E8394A extraído del logo) ── */
+  --color-primary-50:  #fff1f2;
+  --color-primary-100: #ffdde0;
+  --color-primary-200: #ffbfc4;
+  --color-primary-300: #ff919b;
+  --color-primary-400: #ff5566;
+  --color-primary-500: #e8394a;   /* CT red exacto */
+  --color-primary-600: #d42a3a;   /* hover */
+  --color-primary-700: #b21f2d;
+  --color-primary-800: #941e2a;
+  --color-primary-900: #7c1e28;
+
+  /* ── Gris corporativo Tequendama (#555558 extraído del logo) ── */
+  --color-ct-gray-50:  #f6f6f7;
+  --color-ct-gray-100: #ebebec;
+  --color-ct-gray-200: #d4d4d6;
+  --color-ct-gray-300: #adadb0;
+  --color-ct-gray-400: #87878b;
+  --color-ct-gray-500: #6b6b6f;
+  --color-ct-gray-600: #555558;   /* CT gray exacto */
+  --color-ct-gray-700: #434346;
+  --color-ct-gray-800: #2e2e30;
+  --color-ct-gray-900: #1a1a1b;
+
+  /* ── UI neutros ── */
+  --color-secondary-50:  #f8fafc;
+  --color-secondary-100: #f1f5f9;
+  --color-secondary-800: #1e293b;
+  --color-secondary-900: #0f172a;
+}
+
+/* Custom base styles */
+@layer base {
+  body {
+    @apply font-sans antialiased bg-gray-50 text-gray-900;
+  }
+}
