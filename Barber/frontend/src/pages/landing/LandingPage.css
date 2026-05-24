@@ -1,0 +1,907 @@
+/* ═══════════════════════════════════════════════════
+   Landing Page — Rústico Barber & Concept Shop
+   Fiel a: Estilo 1 (verde bosque · crema · oro · Bebas Neue)
+   ═══════════════════════════════════════════════════ */
+
+.lp-root { width: 100%; }
+
+/* ────────────────────────────────────
+   TOP GRID: HERO (60%) | DERECHA (40%)
+   ──────────────────────────────────── */
+.lp-top-grid {
+  display: grid;
+  grid-template-columns: 60% 40%;
+  min-height: 90vh;
+}
+
+@media (max-width: 900px) {
+  .lp-top-grid { grid-template-columns: 1fr; }
+}
+
+/* ── HERO ── */
+.lp-hero {
+  position: relative;
+  min-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 0 56px 52px 52px;
+  overflow: hidden;
+}
+
+/* Fondo oscuro verde bosque + imagen logo como marca de agua */
+.lp-hero-bg {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(160deg, rgba(6,12,4,0.96) 0%, rgba(12,22,8,0.82) 55%, rgba(18,32,10,0.70) 100%),
+    linear-gradient(to bottom right, #0a160a, #162210);
+  z-index: 0;
+}
+
+.lp-hero-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: url('/logo-rustico.png') center right / 55% auto no-repeat;
+  opacity: 0.04;
+  filter: grayscale(1) brightness(4);
+}
+
+/* Barra social vertical (derecha del hero) */
+.lp-hero-social {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  background: rgba(6,12,4,0.6);
+  border-left: 1px solid rgba(201,168,76,0.12);
+  z-index: 3;
+  padding: 24px 0;
+}
+
+.lp-hero-social-label {
+  font-family: var(--font-header);
+  font-size: 0.48rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  writing-mode: vertical-lr;
+  transform: rotate(180deg);
+  margin-bottom: 12px;
+}
+
+.lp-hero-social a {
+  color: var(--text-muted);
+  display: flex;
+  transition: color var(--transition-fast);
+}
+
+.lp-hero-social a:hover { color: var(--accent-copper); }
+
+/* Contenido texto */
+.lp-hero-content {
+  position: relative;
+  z-index: 2;
+  max-width: 580px;
+  padding-right: 52px; /* espacio para barra social */
+}
+
+/* Tagline script */
+.lp-hero-tagline {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: clamp(1rem, 2vw, 1.5rem);
+  color: var(--accent-copper);
+  margin-bottom: 14px;
+  letter-spacing: 0.01em;
+}
+
+/* Headline enorme — Bebas Neue */
+.lp-hero-headline {
+  font-family: var(--font-hero);
+  font-size: clamp(3rem, 7.5vw, 6.5rem);
+  font-weight: 400;
+  color: #ffffff;
+  line-height: 0.93;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  margin-bottom: 22px;
+}
+
+/* Sub */
+.lp-hero-sub {
+  font-size: 0.88rem;
+  color: rgba(240,230,211,0.55);
+  line-height: 1.75;
+  margin-bottom: 30px;
+}
+
+/* CTA botón — estilo Estilo 1: borde claro, sin relleno */
+.lp-hero-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-header);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(240,230,211,0.85);
+  background: transparent;
+  border: 1px solid rgba(240,230,211,0.35);
+  padding: 14px 28px;
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.lp-hero-cta:hover {
+  background: var(--accent-copper);
+  border-color: var(--accent-copper);
+  color: #0d1a0d;
+}
+
+/* Contador slide */
+.lp-hero-counter {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 40px;
+  padding-right: 52px;
+}
+
+.lp-counter-num {
+  font-family: var(--font-header);
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+}
+
+.lp-counter-line {
+  flex: 1;
+  max-width: 90px;
+  height: 1px;
+  background: rgba(255,255,255,0.12);
+}
+
+.lp-counter-btns { display: flex; gap: 6px; margin-left: 8px; }
+
+.lp-counter-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: transparent;
+  color: rgba(240,230,211,0.5);
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: border-color var(--transition-fast), background var(--transition-fast), color var(--transition-fast);
+  line-height: 1;
+}
+
+.lp-counter-btn:hover {
+  border-color: var(--accent-copper);
+  background: var(--accent-copper-glow);
+  color: var(--accent-copper);
+}
+
+/* Badge circular */
+.lp-hero-badge {
+  position: absolute;
+  bottom: 58px;
+  right: 60px;
+  z-index: 2;
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  border: 1px solid rgba(201,168,76,0.25);
+  background: rgba(8,15,5,0.72);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.lp-hero-badge svg { color: var(--accent-copper); }
+
+.lp-hero-badge span {
+  font-family: var(--font-header);
+  font-size: 0.4rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1.3;
+}
+
+/* ── PANEL DERECHO ── */
+.lp-right-stack {
+  display: flex;
+  flex-direction: column;
+  min-height: 90vh;
+}
+
+/* ── BARBEROS (crema) ── */
+.lp-barbers-panel {
+  position: relative;
+  background: var(--bg-cream);
+  flex: 1;
+  padding: 36px 28px 28px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.lp-eyebrow-dark {
+  font-family: var(--font-header);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: rgba(26,50,16,0.5);
+  margin-bottom: 4px;
+}
+
+.lp-eyebrow-light {
+  font-family: var(--font-header);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.lp-barbers-title {
+  font-family: var(--font-hero);
+  font-size: clamp(1.6rem, 3vw, 2.6rem);
+  font-weight: 400;
+  color: #1a2510;
+  line-height: 1;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.lp-barbers-sub {
+  font-size: 0.78rem;
+  color: #4a5a40;
+  line-height: 1.55;
+  margin-bottom: 4px;
+}
+
+/* Grid de fotos barberos */
+.lp-barbers-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  flex: 1;
+}
+
+.lp-barber-card {
+  display: block;
+  text-decoration: none;
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+  transition: transform var(--transition-smooth), box-shadow var(--transition-smooth);
+}
+
+.lp-barber-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 16px 36px rgba(0,0,0,0.28);
+}
+
+.lp-barber-photo {
+  width: 100%;
+  aspect-ratio: 3/4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.lp-barber-initial {
+  font-family: var(--font-hero);
+  font-size: 3rem;
+  color: rgba(201,168,76,0.2);
+  letter-spacing: 0.05em;
+  position: absolute;
+}
+
+.lp-barber-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(transparent, rgba(5,12,3,0.9));
+  padding: 22px 8px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.lp-barber-name {
+  font-family: var(--font-header);
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #ffffff;
+  display: block;
+  text-align: center;
+}
+
+.lp-barber-role {
+  font-family: var(--font-header);
+  font-size: 0.55rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--accent-copper);
+  display: block;
+  text-align: center;
+}
+
+/* Letra B watermark */
+.lp-letter-watermark {
+  position: absolute;
+  right: -12px;
+  bottom: -24px;
+  font-family: var(--font-hero);
+  font-size: 10rem;
+  color: rgba(26,50,16,0.1);
+  line-height: 1;
+  pointer-events: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* ── SERVICIO CARD ── */
+.lp-service-card {
+  background: var(--bg-cream-secondary);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: 210px;
+  border-top: 1px solid rgba(0,0,0,0.08);
+}
+
+.lp-service-photo-link {
+  display: block;
+  text-decoration: none;
+}
+
+.lp-service-photo {
+  width: 100%;
+  height: 100%;
+  min-height: 180px;
+  background: linear-gradient(160deg, #1a2a10 0%, #0d1a08 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: filter var(--transition-fast);
+}
+
+.lp-service-photo-link:hover .lp-service-photo { filter: brightness(1.3); }
+
+.lp-service-icon { color: rgba(201,168,76,0.3); }
+
+.lp-service-info {
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+}
+
+.lp-service-title {
+  font-family: var(--font-hero);
+  font-size: 1.35rem;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #1a2510;
+  line-height: 1.05;
+}
+
+.lp-service-desc {
+  font-size: 0.76rem;
+  color: #4a5a40;
+  line-height: 1.5;
+}
+
+.lp-service-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-header);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #1a3a1a;
+  text-decoration: none;
+  transition: color var(--transition-fast);
+  margin-top: 4px;
+}
+
+.lp-service-cta:hover { color: #c9a84c; }
+
+/* ════════════════════════════════════
+   SECCIÓN 2: BOOKING
+   ════════════════════════════════════ */
+.lp-booking {
+  background: var(--bg-primary);
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+  padding: 72px 0 80px;
+}
+
+.lp-booking-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+}
+
+.lp-booking-header { text-align: center; }
+
+.lp-booking-title {
+  font-family: var(--font-hero);
+  font-size: clamp(2.2rem, 6vw, 4.5rem);
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #ffffff;
+  line-height: 1;
+}
+
+/* ════════════════════════════════════
+   SECCIÓN 3: SERVICIOS (crema, full-width)
+   ════════════════════════════════════ */
+.lp-services-row {
+  background: var(--bg-cream);
+  padding: 64px 0;
+  border-bottom: 1px solid rgba(0,0,0,0.08);
+}
+
+.lp-services-inner {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 48px;
+  align-items: start;
+}
+
+@media (max-width: 768px) {
+  .lp-services-inner { grid-template-columns: 1fr; }
+}
+
+.lp-services-left {}
+
+.lp-services-title {
+  font-family: var(--font-hero);
+  font-size: clamp(1.8rem, 4vw, 3rem);
+  font-weight: 400;
+  color: #1a2510;
+  line-height: 1;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  margin-top: 8px;
+}
+
+.lp-services-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 900px) {
+  .lp-services-cards { grid-template-columns: 1fr; }
+}
+
+.lp-svc-card {
+  display: flex;
+  flex-direction: column;
+  text-decoration: none;
+  border-radius: 4px;
+  overflow: hidden;
+  transition: transform var(--transition-smooth), box-shadow var(--transition-smooth);
+  background: rgba(26,50,16,0.06);
+  border: 1px solid rgba(26,50,16,0.1);
+}
+
+.lp-svc-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 16px 36px rgba(0,0,0,0.15);
+}
+
+.lp-svc-card-photo {
+  height: 140px;
+  background: linear-gradient(160deg, #1f3515 0%, #0d1a08 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: filter var(--transition-fast);
+}
+
+.lp-svc-card:hover .lp-svc-card-photo { filter: brightness(1.25); }
+
+.lp-svc-card-icon { color: rgba(201,168,76,0.3); }
+
+.lp-svc-card-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.lp-svc-card-name {
+  font-family: var(--font-hero);
+  font-size: 1.1rem;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #1a2510;
+  line-height: 1.1;
+}
+
+.lp-svc-card-desc {
+  font-size: 0.76rem;
+  color: #4a5a40;
+  line-height: 1.55;
+  flex: 1;
+}
+
+.lp-svc-card-price {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #c9a84c;
+}
+
+.lp-svc-card-link {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-header);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #1a3a1a;
+  padding: 12px 16px 14px;
+  border-top: 1px solid rgba(26,50,16,0.1);
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+
+.lp-svc-card:hover .lp-svc-card-link {
+  color: #c9a84c;
+  background: rgba(201,168,76,0.08);
+}
+
+/* ════════════════════════════════════
+   SECCIÓN 4: BOTTOM GRID
+   ABOUT (50%) | PROMO (50%)
+   ════════════════════════════════════ */
+.lp-bottom-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: 55vh;
+}
+
+@media (max-width: 900px) {
+  .lp-bottom-grid { grid-template-columns: 1fr; }
+}
+
+/* ── ABOUT (crema) ── */
+.lp-about {
+  position: relative;
+  background: var(--bg-cream);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 36px;
+  align-items: center;
+  padding: 64px 48px;
+  overflow: hidden;
+}
+
+@media (max-width: 768px) {
+  .lp-about { grid-template-columns: 1fr; padding: 48px 24px; }
+}
+
+/* Scissors watermark */
+.lp-scissors-bg {
+  position: absolute;
+  left: -20px;
+  top: 50%;
+  transform: translateY(-50%) rotate(-25deg);
+  font-size: 18rem;
+  color: rgba(26,50,16,0.055);
+  line-height: 1;
+  pointer-events: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.lp-about-text {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.lp-about-title {
+  font-family: var(--font-hero);
+  font-size: clamp(1.8rem, 3.5vw, 3rem);
+  font-weight: 400;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #1a2510;
+  line-height: 1;
+}
+
+.lp-about-body {
+  font-size: 0.86rem;
+  color: #4a5a40;
+  line-height: 1.7;
+}
+
+.lp-about-btn {
+  display: inline-block;
+  font-family: var(--font-header);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #f0e6d2;
+  background: #1a2510;
+  padding: 13px 22px;
+  text-decoration: none;
+  align-self: flex-start;
+  transition: background var(--transition-fast);
+}
+
+.lp-about-btn:hover { background: #2a3a18; }
+
+.lp-about-photo-link {
+  display: block;
+  text-decoration: none;
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+  border-radius: 4px;
+}
+
+.lp-about-photo {
+  width: 100%;
+  height: 300px;
+  overflow: hidden;
+  transition: transform var(--transition-smooth);
+}
+
+.lp-about-photo-link:hover .lp-about-photo { transform: scale(1.04); }
+
+.lp-about-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* EST watermark */
+.lp-est-watermark {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  font-family: var(--font-hero);
+  font-size: 3.5rem;
+  color: rgba(26,50,16,0.09);
+  letter-spacing: 0.06em;
+  writing-mode: vertical-lr;
+  text-orientation: mixed;
+  pointer-events: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* ── PROMO (oscura) ── */
+.lp-promo {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 64px 48px;
+  background: #0a160a;
+}
+
+.lp-promo-bg {
+  position: absolute;
+  inset: 0;
+  background:
+    url('/rustico-hero.jpeg') center / cover no-repeat,
+    linear-gradient(160deg, #0f1e0a 0%, #0a1408 100%);
+  opacity: 0.25;
+}
+
+.lp-promo-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.lp-promo-eyebrow {
+  font-family: var(--font-header);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.lp-promo-title {
+  font-family: var(--font-hero);
+  font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+  font-weight: 400;
+  color: #ffffff;
+  line-height: 0.95;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.lp-promo-percent {
+  font-family: var(--font-hero);
+  font-size: clamp(3rem, 6vw, 5rem);
+  font-weight: 400;
+  color: var(--accent-gold);
+  line-height: 0.9;
+  letter-spacing: 0.04em;
+}
+
+.lp-promo-sub {
+  font-size: 0.82rem;
+  color: rgba(240,230,211,0.5);
+  line-height: 1.6;
+  max-width: 280px;
+}
+
+.lp-promo-days {
+  font-family: var(--font-header);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.lp-promo-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-header);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent-copper);
+  text-decoration: none;
+  border: 1px solid rgba(201,168,76,0.28);
+  padding: 11px 20px;
+  align-self: flex-start;
+  margin-top: 6px;
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.lp-promo-cta:hover {
+  background: var(--accent-copper);
+  color: #0d1a0d;
+  border-color: var(--accent-copper);
+}
+
+.lp-promo-letter {
+  position: absolute;
+  right: -18px;
+  bottom: -28px;
+  font-family: var(--font-hero);
+  font-size: 13rem;
+  color: rgba(201,168,76,0.05);
+  line-height: 1;
+  pointer-events: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* ════════════════════════════════════
+   BANDA CONTACTO
+   ════════════════════════════════════ */
+.lp-contact {
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-color);
+  padding: 18px 0;
+}
+
+.lp-contact-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0;
+}
+
+.lp-contact-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-header);
+  font-size: 0.76rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  padding: 8px 28px;
+}
+
+.lp-contact-item a {
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.lp-contact-item a:hover { color: var(--accent-copper); }
+
+.lp-contact-icon { color: var(--accent-copper); flex-shrink: 0; }
+
+.lp-contact-div {
+  width: 1px;
+  height: 22px;
+  background: var(--border-color);
+  flex-shrink: 0;
+}
+
+/* ── Fotos de barberos (sustituyen estilos inline) ── */
+.lp-barber-photo--mateo    { background: linear-gradient(160deg, #1f3515 0%, #0d1a08 100%); }
+.lp-barber-photo--santiago { background: linear-gradient(160deg, #162810 0%, #0d1a08 100%); }
+.lp-barber-photo--any      { background: linear-gradient(160deg, #1a2a10 0%, #0d1a08 100%); }
+
+/* ── Acceso admin (oculto, pie de página) ── */
+.lp-admin-access {
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: flex-end;
+  padding: 10px 24px;
+}
+
+.lp-admin-link {
+  font-family: var(--font-header);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  transition: color var(--transition-fast);
+}
+
+.lp-admin-link:hover { color: var(--accent-copper); }
