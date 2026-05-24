@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: rustico_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: rustico_admin
+      POSTGRES_PASSWORD: rustico_secure_2024
+      POSTGRES_DB: rustico_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rustico_admin -d rustico_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: rustico_redis
+    restart: always
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: rustico_backend
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://rustico_admin:rustico_secure_2024@postgres:5432/rustico_db
+      JWT_SECRET: rustico-jwt-secret-change-in-production-min-32chars
+      JWT_EXPIRY: 8h
+      REFRESH_TOKEN_EXPIRY: 30d
+      PORT: 3001
+      NODE_ENV: development
+      FRONTEND_URL: http://localhost:5173
+    ports:
+      - "3001:3001"
+    volumes:
+      - ../backend/src:/app/src
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: rustico_frontend
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ../frontend/src:/app/src
+
+volumes:
+  postgres_data:
+  redis_data:
