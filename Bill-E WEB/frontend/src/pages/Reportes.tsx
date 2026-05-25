@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Cell, LabelList,
 } from 'recharts';
-import { BarChart2, AlertCircle, Clock, ChevronRight, ArrowLeft } from 'lucide-react';
+import { BarChart2, AlertCircle, Clock, ChevronRight, ArrowLeft, User } from 'lucide-react';
 
 // ── Tooltip personalizado ────────────────────────────────────────────────────
 function CustomTooltip({ active, payload }: any) {
@@ -118,11 +118,11 @@ function RechazadasPorProveedor() {
           )}
 
           {/* Gráfica */}
-          <div className="h-80 w-full">
+          <div className="h-80 w-full min-h-80">
             {loading ? (
               <div className="h-full bg-gray-50 rounded-xl animate-pulse" />
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height={320}>
                 <BarChart
                   data={data}
                   margin={{ top: 20, right: 20, left: -10, bottom: 0 }}
@@ -407,7 +407,7 @@ function DemorasPorArea() {
                     );
                   })}
                   <LabelList dataKey={metric} position="top"
-                    formatter={(v: number) => `${v}d`}
+                    formatter={(v) => `${Number(v)}d`}
                     style={{ fill: '#6b7280', fontSize: 11, fontWeight: 600 }} />
                 </Bar>
               </BarChart>
@@ -493,6 +493,215 @@ function DemorasPorArea() {
 }
 
 // ── Catálogo de reportes disponibles ────────────────────────────────────────
+function TooltipEntregado({ active, payload }: any) {
+  if (!active || !payload?.length) return null;
+  const d = payload[0].payload;
+  return (
+    <div className="bg-white border border-gray-200 rounded-xl shadow-lg p-3 text-xs max-w-xs">
+      <p className="font-bold text-gray-800 mb-2">{d.entregado}</p>
+      <div className="space-y-1">
+        <div className="flex justify-between gap-4">
+          <span className="text-gray-500">Promedio en alerta</span>
+          <span className="font-bold" style={{ color: colorDemora(d.avg_dias_alerta) }}>{d.avg_dias_alerta} dias</span>
+        </div>
+        <div className="flex justify-between gap-4">
+          <span className="text-gray-500">Alertas</span>
+          <span className="font-semibold text-red-700">{d.alertas}</span>
+        </div>
+        <div className="flex justify-between gap-4">
+          <span className="text-gray-500">Demoradas</span>
+          <span className="font-semibold text-orange-700">{d.demoradas}</span>
+        </div>
+        <div className="flex justify-between gap-4">
+          <span className="text-gray-500">Total asignadas</span>
+          <span className="font-semibold text-gray-800">{d.total}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DemorasPorEntregado() {
+  const [data,       setData]       = useState<any[]>([]);
+  const [loading,    setLoading]    = useState(true);
+  const [error,      setError]      = useState('');
+  const [metric,     setMetric]     = useState<'avg_dias_alerta' | 'max_dias' | 'riesgo_total'>('avg_dias_alerta');
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+
+  const rowRefs = useRef<(HTMLTableRowElement | null)[]>([]);
+
+  useEffect(() => {
+    setLoading(true);
+    setError('');
+    fetch('/api/reportes/demoras-por-entregado')
+      .then(r => { if (!r.ok) throw new Error(`Error ${r.status}`); return r.json(); })
+      .then(setData)
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    if (hoveredIdx !== null && rowRefs.current[hoveredIdx]) {
+      rowRefs.current[hoveredIdx]!.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [hoveredIdx]);
+
+  const metricLabels = {
+    avg_dias_alerta: 'Mayor demora',
+    max_dias:        'Maximo dias',
+    riesgo_total:    'Alertas + demoradas',
+  };
+
+  const sorted = [...data].sort((a, b) => b[metric] - a[metric]);
+  const lider = sorted[0];
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex flex-col gap-5">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-rose-50">
+            <User size={20} className="text-rose-600" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-gray-900">Demora por Usuario Entregado</h3>
+            <p className="text-xs text-gray-400 mt-0.5">Ranking de usuarios asignados con facturas en Demorado o Alerta</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5 flex-shrink-0 flex-wrap">
+          {(Object.keys(metricLabels) as (keyof typeof metricLabels)[]).map(k => (
+            <button key={k} onClick={() => setMetric(k)}
+              className={`px-3 py-1 rounded-lg text-xs font-semibold border transition-all ${
+                metric === k
+                  ? 'text-white border-transparent bg-rose-600'
+                  : 'border-gray-200 text-gray-500 bg-white hover:border-rose-300 hover:text-rose-600'
+              }`}>
+              {metricLabels[k]}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {lider && !loading && !error && (
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+          <div className="rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 sm:col-span-2">
+            <p className="text-[10px] uppercase tracking-wide font-bold text-rose-500">Mayor demora actual</p>
+            <p className="text-lg font-bold text-gray-900 truncate mt-1">{lider.entregado}</p>
+          </div>
+          <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+            <p className="text-[10px] uppercase tracking-wide font-bold text-gray-400">Promedio alerta</p>
+            <p className="text-lg font-bold text-gray-900">{lider.avg_dias_alerta} d</p>
+          </div>
+          <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+            <p className="text-[10px] uppercase tracking-wide font-bold text-gray-400">Alertas</p>
+            <p className="text-lg font-bold text-red-600">{lider.alertas}</p>
+          </div>
+        </div>
+      )}
+
+      {error ? (
+        <div className="py-16 text-center text-sm text-red-500">Error: {error}</div>
+      ) : loading ? (
+        <div className="h-72 bg-gray-50 rounded-xl animate-pulse" />
+      ) : sorted.length === 0 ? (
+        <div className="py-16 text-center text-sm text-gray-400">No hay usuarios con facturas demoradas o en alerta</div>
+      ) : (
+        <>
+          <p className="text-[11px] text-gray-400 italic -mb-2">
+            Pasa el cursor sobre una barra para resaltar su fila en la tabla
+          </p>
+
+          <div className="h-72 min-h-72">
+            <ResponsiveContainer width="100%" height={288}>
+              <BarChart
+                data={sorted}
+                margin={{ top: 22, right: 20, left: -10, bottom: 0 }}
+                barCategoryGap="28%"
+                onMouseMove={(state: any) => {
+                  if (state.isTooltipActive && state.activeTooltipIndex != null) {
+                    setHoveredIdx(state.activeTooltipIndex);
+                  }
+                }}
+                onMouseLeave={() => setHoveredIdx(null)}
+              >
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                <XAxis dataKey="entregado" axisLine={false} tickLine={false}
+                  tick={{ fill: '#9ca3af', fontSize: 11 }} tickFormatter={v => shortName(v, 12)} dy={8} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 11 }}
+                  allowDecimals={false} unit={metric === 'riesgo_total' ? '' : ' d'} />
+                <Tooltip content={<TooltipEntregado />} cursor={{ fill: 'rgba(225,29,72,0.06)' }} />
+                <Bar dataKey={metric} radius={[6, 6, 0, 0]} maxBarSize={52}>
+                  {sorted.map((row, i) => {
+                    const value = metric === 'riesgo_total' ? row.avg_dias_alerta : row[metric];
+                    const base  = colorDemora(value);
+                    const hover = colorDemoraHover(value);
+                    return (
+                      <Cell
+                        key={i}
+                        fill={hoveredIdx === i ? hover : base}
+                        stroke={hoveredIdx === i ? hover : 'transparent'}
+                        strokeWidth={hoveredIdx === i ? 2 : 0}
+                        style={{ filter: hoveredIdx === i ? `drop-shadow(0 0 6px ${base}88)` : 'none', transition: 'all 0.15s' }}
+                      />
+                    );
+                  })}
+                  <LabelList dataKey={metric} position="top"
+                    formatter={(v) => metric === 'riesgo_total' ? Number(v) : `${Number(v)}d`}
+                    style={{ fill: '#6b7280', fontSize: 11, fontWeight: 600 }} />
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="overflow-hidden rounded-xl border border-gray-100">
+            <table className="min-w-full text-xs">
+              <thead>
+                <tr className="bg-rose-50">
+                  {['#', 'Usuario entregado', 'Prom. alerta', 'Max. dias', 'Alertas', 'Demoradas', 'A tiempo', 'Activas', 'Total'].map(h => (
+                    <th key={h} className="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wide text-[10px] whitespace-nowrap">
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {sorted.map((row, i) => {
+                  const isHovered  = hoveredIdx === i;
+                  const accentColor = colorDemora(row.avg_dias_alerta);
+                  return (
+                    <tr
+                      key={row.entregado}
+                      ref={el => { rowRefs.current[i] = el; }}
+                      style={{
+                        background: isHovered ? `${accentColor}18` : (i % 2 === 0 ? '#ffffff' : '#fff7f9'),
+                        borderLeft: isHovered ? `3px solid ${accentColor}` : '3px solid transparent',
+                        transition: 'background 0.15s, border-color 0.15s',
+                      }}
+                    >
+                      <td className="px-3 py-2.5 text-gray-400 font-mono">{i + 1}</td>
+                      <td className="px-3 py-2.5 font-semibold max-w-xs truncate" style={{ color: isHovered ? accentColor : '#1f2937' }}>
+                        {row.entregado}
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <span className="font-bold text-sm" style={{ color: accentColor }}>{row.avg_dias_alerta} d</span>
+                      </td>
+                      <td className="px-3 py-2.5 text-gray-600 font-medium">{row.max_dias} d</td>
+                      <td className="px-3 py-2.5"><span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-red-100 text-red-700">{row.alertas}</span></td>
+                      <td className="px-3 py-2.5"><span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-orange-100 text-orange-700">{row.demoradas}</span></td>
+                      <td className="px-3 py-2.5 text-gray-600 font-medium">{row.a_tiempo}</td>
+                      <td className="px-3 py-2.5 text-gray-600 font-medium">{row.activas}</td>
+                      <td className="px-3 py-2.5 font-semibold text-gray-700">{row.total}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 const REPORTES = [
   {
     key: 'rechazadas',
@@ -513,6 +722,16 @@ const REPORTES = [
     borde: 'border-orange-100',
     badge: 'text-orange-600 bg-orange-50 border-orange-200',
     badgeLabel: 'Tiempos · Áreas',
+  },
+  {
+    key: 'entregado',
+    titulo: 'Demora por Usuario Entregado',
+    descripcion: 'Identifica que usuario de la columna Entregado concentra mayores demoras frente a la alerta de radicado.',
+    icono: <User size={28} className="text-rose-600" />,
+    fondo: 'bg-rose-50',
+    borde: 'border-rose-100',
+    badge: 'text-rose-600 bg-rose-50 border-rose-200',
+    badgeLabel: 'Tiempos - Usuarios',
   },
 ] as const;
 
@@ -579,6 +798,7 @@ export default function Reportes() {
       {/* Reporte seleccionado */}
       {selected === 'rechazadas' && <RechazadasPorProveedor />}
       {selected === 'demoras'    && <DemorasPorArea />}
+      {selected === 'entregado'  && <DemorasPorEntregado />}
     </div>
   );
 }

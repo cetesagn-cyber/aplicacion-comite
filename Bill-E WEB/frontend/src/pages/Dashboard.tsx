@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell,
 } from 'recharts';
 import { AlertCircle, Clock, CheckCircle2, CalendarDays, TrendingUp, TrendingDown, ChevronDown } from 'lucide-react';
-import { useDateRange } from '../layouts/MainLayout';
+import { useDateRange } from '../lib/dateRangeContext';
 import { cn } from '../lib/utils';
 
 // ── Selector de rango reutilizable ───────────────────────────────────────────
@@ -97,6 +97,13 @@ const mesActual   = new Date().toLocaleString('es-CO', { month: 'long', year: 'n
 const mesAnterior = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1)
   .toLocaleString('es-CO', { month: 'long', year: 'numeric' });
 
+const DEMO_ACTUAL = [4,7,5,9,6,11,8,13,7,15,10,14,9,17,12,16,11,19,13,18,10,21,15,20,13,23,17,22,14,25,18];
+const DEMO_ANTERIOR = [3,5,4,7,5, 9,6,10,5,12, 8,11, 7,14, 9,13, 8,15,10,14, 8,17,12,16,10,19,14,18,11,20,15];
+const AREA_COLORS = [
+  '#e8394a','#3b82f6','#10b981','#f59e0b',
+  '#8b5cf6','#06b6d4','#f97316','#6366f1',
+];
+
 function CustomTooltip({ active, payload, label }: any) {
   if (active && payload && payload.length) {
     return (
@@ -182,10 +189,6 @@ export default function Dashboard() {
     fetchData();
   }, []);
 
-  // ── Datos demo para el gráfico (cuando los datos reales son escasos) ────────
-  const DEMO_ACTUAL   = [4,7,5,9,6,11,8,13,7,15,10,14,9,17,12,16,11,19,13,18,10,21,15,20,13,23,17,22,14,25,18];
-  const DEMO_ANTERIOR = [3,5,4,7,5, 9,6,10,5,12, 8,11, 7,14, 9,13, 8,15,10,14, 8,17,12,16,10,19,14,18,11,20,15];
-
   // ── Construir datos del gráfico de área ─────────────────────────────────
   const chartData = useMemo(() => {
     const now         = new Date();
@@ -214,12 +217,6 @@ export default function Dashboard() {
     });
   }, [tendencia]);
 
-  // ── Paleta de colores para áreas ────────────────────────────────────────
-  const AREA_COLORS = [
-    '#e8394a','#3b82f6','#10b981','#f59e0b',
-    '#8b5cf6','#06b6d4','#f97316','#6366f1',
-  ];
-
   // ── Top por área para el pie ─────────────────────────────────────────────
   const areaData = useMemo(() => {
     if (!porArea.length) return [];
@@ -233,14 +230,6 @@ export default function Dashboard() {
   }, [porArea]);
 
   // ── Tendencia mensual ────────────────────────────────────────────────────
-  const trendPct = useMemo(() => {
-    if (!metrics) return 0;
-    const actual   = Number(metrics.total_mes_actual)   || 0;
-    const anterior = Number(metrics.total_mes_anterior) || 0;
-    if (anterior === 0) return actual > 0 ? 100 : 0;
-    return Math.round(((actual - anterior) / anterior) * 100);
-  }, [metrics]);
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -326,7 +315,7 @@ export default function Dashboard() {
             {loading ? (
               <div className="h-full bg-gray-50 rounded-xl animate-pulse" />
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height={320}>
                 <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="gradActual" x1="0" y1="0" x2="0" y2="1">
@@ -364,8 +353,8 @@ export default function Dashboard() {
             <p className="text-sm text-gray-400 text-center py-10">Sin datos de área registrados</p>
           ) : (
             <>
-              <div className="flex-1 flex items-center justify-center">
-                <ResponsiveContainer width="100%" height={200}>
+              <div className="flex-1 flex items-center justify-center min-h-[280px]">
+                <ResponsiveContainer width="100%" height={260}>
                   <PieChart>
                     <Pie data={areaData} cx="50%" cy="50%" innerRadius={55} outerRadius={78}
                       paddingAngle={4} dataKey="value" startAngle={90} endAngle={-270}>

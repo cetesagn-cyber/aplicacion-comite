@@ -1,19 +1,8 @@
-import React, { useEffect, useState, createContext, useContext } from 'react';
+import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { Home, List, UploadCloud, LogOut, Users, BarChart2, ChevronLeft, ChevronRight, ShieldCheck } from 'lucide-react';
 import { cn } from '../lib/utils';
-
-// ── Contexto global de rango de fechas ───────────────────────────────────────
-const today    = new Date();
-const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
-const todayStr = today.toISOString().slice(0, 10);
-
-export const DateRangeContext = createContext<{
-  desde: string; hasta: string;
-  setDesde: (d: string) => void; setHasta: (d: string) => void;
-}>({ desde: firstDay, hasta: todayStr, setDesde: () => {}, setHasta: () => {} });
-
-export const useDateRange = () => useContext(DateRangeContext);
+import { DateRangeContext, defaultDesde, defaultHasta } from '../lib/dateRangeContext';
 
 export default function MainLayout() {
   const navigate = useNavigate();
@@ -35,17 +24,18 @@ export default function MainLayout() {
   const rawUser = localStorage.getItem('billee_user');
   const user    = rawUser ? JSON.parse(rawUser) : { full_name: 'Usuario', role: 'operador' };
 
-  const [desde, setDesde] = useState(firstDay);
-  const [hasta, setHasta] = useState(todayStr);
+  const [desde, setDesde] = useState(defaultDesde);
+  const [hasta, setHasta] = useState(defaultHasta);
 
+  const coreRoles = ['admin', 'operador', 'auditor', 'visor'];
   const menuItems = [
-    { name: 'Inicio',     path: '/',           icon: <Home size={18} />,        end: true,  roles: null },
-    { name: 'Gestión',    path: '/gestion',    icon: <List size={18} />,        end: false, roles: null },
-    { name: 'Radicación', path: '/radicacion', icon: <UploadCloud size={18} />, end: false, roles: null },
-    { name: 'Reportes',   path: '/reportes',   icon: <BarChart2 size={18} />,   end: false, roles: null },
+    { name: 'Inicio',     path: '/',           icon: <Home size={18} />,        end: true,  roles: coreRoles },
+    { name: 'Gestión',    path: '/gestion',    icon: <List size={18} />,        end: false, roles: coreRoles },
+    { name: 'Radicación', path: '/radicacion', icon: <UploadCloud size={18} />, end: false, roles: coreRoles },
+    { name: 'Reportes',   path: '/reportes',   icon: <BarChart2 size={18} />,   end: false, roles: coreRoles },
     { name: 'Usuarios',   path: '/usuarios',   icon: <Users size={18} />,       end: false, roles: ['admin'] },
     { name: 'Auditoría',  path: '/auditoria',  icon: <ShieldCheck size={18} />, end: false, roles: ['admin'] },
-  ].filter(item => !item.roles || item.roles.includes(user.role));
+  ].filter(item => item.roles.includes(user.role));
 
   return (
     <DateRangeContext.Provider value={{ desde, hasta, setDesde, setHasta }}>
@@ -76,18 +66,16 @@ export default function MainLayout() {
             <img
               src="/logo-ct-horizontal-color.png"
               alt="Cementos Tequendama"
-              className="w-full h-auto object-contain"
-              style={{ maxHeight: '56px' }}
+              className="w-full h-auto object-contain max-h-[56px]"
             />
-            <div className="rounded-2xl overflow-hidden w-full shadow-sm border border-gray-100" style={{ height: '148px' }}>
+            <div className="rounded-2xl overflow-hidden w-full shadow-sm border border-gray-100 h-[148px]">
               <img
                 src="/logo-bille-portada.png"
                 alt="Bill-e"
-                className="w-full h-full object-cover"
-                style={{ objectPosition: 'center 18%' }}
+                className="w-full h-full object-cover object-[center_18%]"
               />
             </div>
-            <p className="text-2xl font-bold tracking-wide" style={{ color: '#e8394a' }}>
+            <p className="text-2xl font-bold tracking-wide text-[#e8394a]">
               Bill-e
             </p>
           </div>
@@ -153,20 +141,17 @@ export default function MainLayout() {
 
         {/* Header superior */}
         <header className="bg-white border-b border-gray-200 px-8 py-3 shrink-0 shadow-sm flex items-center justify-between gap-6">
-          <h2 className="text-lg font-bold tracking-tight whitespace-nowrap" style={{ color: '#555558' }}>
+          <h2 className="text-lg font-bold tracking-tight whitespace-nowrap text-[#555558]">
             Portal de Gestión de Facturación
           </h2>
 
           <div className="flex items-center gap-3">
-            <div
-              className="h-10 w-10 rounded-full overflow-hidden border-2 shadow-md bg-white flex-shrink-0 flex items-center justify-center p-1"
-              style={{ borderColor: '#e8394a' }}
-            >
+            <div className="h-10 w-10 rounded-full overflow-hidden border-2 border-[#e8394a] shadow-md bg-white flex-shrink-0 flex items-center justify-center p-1">
               <img src="/logo-bille-1.png" alt="Bill-e" className="w-full h-full object-contain" />
             </div>
             <div className="leading-tight">
-              <p className="text-sm font-bold truncate max-w-[160px]" style={{ color: '#2e2e30' }}>{user.full_name}</p>
-              <p className="text-[11px] capitalize" style={{ color: '#87878b' }}>{user.role}</p>
+              <p className="text-sm font-bold truncate max-w-[160px] text-[#2e2e30]">{user.full_name}</p>
+              <p className="text-[11px] capitalize text-[#87878b]">{user.role}</p>
             </div>
           </div>
         </header>

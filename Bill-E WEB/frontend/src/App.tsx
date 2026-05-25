@@ -1,5 +1,5 @@
-import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import type { ReactElement } from 'react';
 import MainLayout from './layouts/MainLayout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -8,6 +8,22 @@ import Radicacion from './pages/Radicacion';
 import Usuarios from './pages/Usuarios';
 import Reportes from './pages/Reportes';
 import Auditoria from './pages/Auditoria';
+
+function RequireRole({
+  roles,
+  children,
+  blockedEmails = [],
+}: {
+  roles: string[];
+  children: ReactElement;
+  blockedEmails?: string[];
+}) {
+  const rawUser = localStorage.getItem('billee_user');
+  const user = rawUser ? JSON.parse(rawUser) : null;
+  return roles.includes(user?.role) && !blockedEmails.includes(user?.email)
+    ? children
+    : <Navigate to="/" replace />;
+}
 
 function App() {
   return (
@@ -19,9 +35,9 @@ function App() {
           <Route index element={<Dashboard />} />
           <Route path="gestion" element={<Gestion />} />
           <Route path="radicacion" element={<Radicacion />} />
-          <Route path="usuarios" element={<Usuarios />} />
+          <Route path="usuarios" element={<RequireRole roles={['admin']}><Usuarios /></RequireRole>} />
           <Route path="reportes" element={<Reportes />} />
-          <Route path="auditoria" element={<Auditoria />} />
+          <Route path="auditoria" element={<RequireRole roles={['admin']}><Auditoria /></RequireRole>} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

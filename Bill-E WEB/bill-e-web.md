@@ -902,7 +902,7 @@ STORAGE_SECRET_KEY=minioadmin
 # IA
 AI_PROVIDER=openai           # 'openai' | 'anthropic' | 'local'
 AI_API_KEY=sk-...
-AI_MODEL=gpt-4o
+AI_MODEL=code-davinci-002   # 'code-davinci-002' o cualquier otro modelo compatible de OpenAI / Codex
 
 # Seguridad
 ALLOWED_ORIGINS=https://billee.tudominio.com

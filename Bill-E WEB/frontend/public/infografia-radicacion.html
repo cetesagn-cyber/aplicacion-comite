@@ -1,457 +1,418 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Infografía — Cómo se registra una factura · Bill-e Web</title>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Proceso de Radicación · Bill-e Web</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+*{box-sizing:border-box;margin:0;padding:0;}
 
-  body {
-    font-family: 'Inter', sans-serif;
-    background: #f8f8f8;
-    color: #1a1a1a;
-    min-height: 100vh;
-    padding: 40px 20px 60px;
-  }
+:root{
+  --red:#e8394a;
+  --red-light:#fef2f2;
+  --red-mid:#fca5a5;
+  --dark:#0f172a;
+  --mid:#475569;
+  --light:#94a3b8;
+  --bg:#f1f5f9;
+  --white:#ffffff;
+  --radius:18px;
+}
 
-  /* ── Header ── */
-  .header {
-    text-align: center;
-    margin-bottom: 48px;
-  }
-  .header .logo {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    background: #e8394a;
-    color: white;
-    padding: 8px 20px;
-    border-radius: 50px;
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: .5px;
-    margin-bottom: 20px;
-  }
-  .header h1 {
-    font-size: clamp(24px, 4vw, 38px);
-    font-weight: 900;
-    color: #111;
-    line-height: 1.15;
-    margin-bottom: 10px;
-  }
-  .header h1 span { color: #e8394a; }
-  .header p {
-    font-size: 15px;
-    color: #6b7280;
-    max-width: 520px;
-    margin: 0 auto;
-  }
+body{
+  font-family:'Inter',sans-serif;
+  background:var(--bg);
+  color:var(--dark);
+  min-height:100vh;
+  padding:0;
+}
 
-  /* ── Timeline ── */
-  .timeline {
-    max-width: 860px;
-    margin: 0 auto;
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-  }
+/* ── HERO ── */
+.hero{
+  background:linear-gradient(135deg,#0f172a 0%,#1e293b 50%,#0f172a 100%);
+  padding:64px 24px 80px;
+  text-align:center;
+  position:relative;
+  overflow:hidden;
+}
+.hero::before{
+  content:'';
+  position:absolute;
+  width:600px;height:600px;
+  background:radial-gradient(circle,rgba(232,57,74,.18) 0%,transparent 70%);
+  top:-200px;left:50%;transform:translateX(-50%);
+  pointer-events:none;
+}
+.hero::after{
+  content:'';
+  position:absolute;
+  bottom:-2px;left:0;right:0;height:60px;
+  background:var(--bg);
+  clip-path:ellipse(55% 100% at 50% 100%);
+}
+.badge{
+  display:inline-flex;align-items:center;gap:8px;
+  background:rgba(232,57,74,.15);
+  border:1px solid rgba(232,57,74,.3);
+  color:#fca5a5;
+  padding:6px 16px;border-radius:50px;
+  font-size:12px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;
+  margin-bottom:24px;
+}
+.badge svg{width:14px;height:14px;fill:#fca5a5;}
+.hero h1{
+  font-size:clamp(28px,5vw,52px);
+  font-weight:900;
+  color:#fff;
+  line-height:1.1;
+  margin-bottom:16px;
+  letter-spacing:-1px;
+}
+.hero h1 em{
+  font-style:normal;
+  background:linear-gradient(90deg,#e8394a,#f97316);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.hero p{
+  font-size:16px;color:#94a3b8;max-width:480px;margin:0 auto;line-height:1.7;
+}
 
-  /* Línea vertical central */
-  .timeline::before {
-    content: '';
-    position: absolute;
-    left: 50%;
-    top: 30px;
-    bottom: 30px;
-    width: 3px;
-    background: linear-gradient(to bottom, #e8394a, #fca5a5, #e8394a);
-    transform: translateX(-50%);
-    border-radius: 4px;
-  }
+/* ── WRAPPER ── */
+.wrap{max-width:1000px;margin:0 auto;padding:0 24px 80px;}
 
-  /* ── Paso ── */
-  .step {
-    display: flex;
-    align-items: flex-start;
-    gap: 0;
-    margin-bottom: 12px;
-    position: relative;
-  }
+/* ── SECCIÓN TÍTULO ── */
+.section-label{
+  display:flex;align-items:center;gap:12px;
+  margin:52px 0 28px;
+}
+.section-label .line{flex:1;height:1px;background:linear-gradient(90deg,#e2e8f0,transparent);}
+.section-label span{
+  font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;
+  color:var(--light);white-space:nowrap;
+}
 
-  /* Pasos impares → tarjeta a la izquierda */
-  .step:nth-child(odd)  { flex-direction: row; }
-  .step:nth-child(even) { flex-direction: row-reverse; }
+/* ── STEPS GRID ── */
+.steps{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:16px;
+  position:relative;
+}
 
-  .step-card {
-    width: calc(50% - 44px);
-    background: white;
-    border-radius: 16px;
-    padding: 22px 24px;
-    box-shadow: 0 2px 12px rgba(0,0,0,.07);
-    border: 1.5px solid #f0f0f0;
-    transition: transform .2s, box-shadow .2s;
-    position: relative;
-  }
-  .step-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 24px rgba(232,57,74,.12);
-    border-color: #fca5a5;
-  }
+/* Línea vertical decorativa */
+.steps::before{
+  content:'';
+  position:absolute;
+  left:50%;top:0;bottom:0;width:1px;
+  background:linear-gradient(to bottom,transparent,#e2e8f0 15%,#e2e8f0 85%,transparent);
+  transform:translateX(-50%);
+  pointer-events:none;
+}
 
-  /* Triángulo apuntando al centro */
-  .step:nth-child(odd)  .step-card::after {
-    content: '';
-    position: absolute;
-    right: -10px;
-    top: 28px;
-    border: 10px solid transparent;
-    border-left-color: white;
-    filter: drop-shadow(2px 0 1px rgba(0,0,0,.04));
-  }
-  .step:nth-child(even) .step-card::after {
-    content: '';
-    position: absolute;
-    left: -10px;
-    top: 28px;
-    border: 10px solid transparent;
-    border-right-color: white;
-    filter: drop-shadow(-2px 0 1px rgba(0,0,0,.04));
-  }
+.step-card{
+  background:var(--white);
+  border-radius:var(--radius);
+  padding:28px;
+  border:1.5px solid #e2e8f0;
+  position:relative;
+  transition:transform .25s,box-shadow .25s,border-color .25s;
+  display:flex;flex-direction:column;gap:12px;
+}
+.step-card:hover{
+  transform:translateY(-4px);
+  box-shadow:0 20px 40px rgba(15,23,42,.08);
+  border-color:var(--red-mid);
+}
 
-  /* Número central */
-  .step-num {
-    width: 88px;
-    flex-shrink: 0;
-    display: flex;
-    justify-content: center;
-    padding-top: 16px;
-    z-index: 2;
-  }
-  .step-num .circle {
-    width: 52px;
-    height: 52px;
-    border-radius: 50%;
-    background: #e8394a;
-    color: white;
-    font-size: 20px;
-    font-weight: 900;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 0 0 5px white, 0 0 0 7px #fca5a5;
-  }
+/* Número flotante */
+.step-num{
+  position:absolute;
+  top:-14px;left:24px;
+  width:30px;height:30px;
+  background:var(--red);
+  color:#fff;
+  font-size:13px;font-weight:800;
+  border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 0 0 4px var(--bg);
+}
 
-  /* Ícono + título */
-  .step-icon {
-    font-size: 28px;
-    margin-bottom: 8px;
-    line-height: 1;
-  }
-  .step-title {
-    font-size: 15px;
-    font-weight: 800;
-    color: #111;
-    margin-bottom: 6px;
-  }
-  .step-desc {
-    font-size: 13px;
-    color: #555;
-    line-height: 1.6;
-  }
+.step-icon-wrap{
+  width:52px;height:52px;
+  background:var(--red-light);
+  border-radius:14px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:26px;
+  flex-shrink:0;
+}
 
-  /* Chips de detalle */
-  .chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 5px;
-    margin-top: 10px;
-  }
-  .chip {
-    font-size: 11px;
-    font-weight: 600;
-    padding: 3px 9px;
-    border-radius: 20px;
-    border: 1.5px solid;
-  }
-  .chip-red    { background: #fef2f2; color: #e8394a; border-color: #fca5a5; }
-  .chip-green  { background: #f0fdf4; color: #16a34a; border-color: #86efac; }
-  .chip-blue   { background: #eff6ff; color: #2563eb; border-color: #93c5fd; }
-  .chip-yellow { background: #fefce8; color: #ca8a04; border-color: #fde047; }
-  .chip-gray   { background: #f9fafb; color: #6b7280; border-color: #e5e7eb; }
+.step-head{display:flex;align-items:center;gap:14px;}
+.step-title{font-size:15px;font-weight:800;color:var(--dark);line-height:1.3;}
+.step-desc{font-size:13px;color:var(--mid);line-height:1.7;padding-left:2px;}
 
-  /* ── Estados ── */
-  .estados {
-    max-width: 860px;
-    margin: 40px auto 0;
-    background: white;
-    border-radius: 20px;
-    padding: 28px 32px;
-    box-shadow: 0 2px 12px rgba(0,0,0,.07);
-    border: 1.5px solid #f0f0f0;
-  }
-  .estados h2 {
-    font-size: 16px;
-    font-weight: 800;
-    color: #111;
-    margin-bottom: 18px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .estados-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-    gap: 14px;
-  }
-  .estado-card {
-    border-radius: 12px;
-    padding: 14px 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-  }
-  .estado-card .dot {
-    width: 10px; height: 10px;
-    border-radius: 50%;
-    display: inline-block;
-    margin-right: 6px;
-  }
-  .estado-card .label { font-size: 13px; font-weight: 700; }
-  .estado-card .desc  { font-size: 12px; color: #666; line-height: 1.5; }
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;}
+.tag{
+  font-size:11px;font-weight:600;
+  padding:3px 10px;border-radius:50px;
+  border:1.5px solid;
+  white-space:nowrap;
+}
+.tag-red   {background:#fef2f2;color:#e8394a;border-color:#fecaca;}
+.tag-blue  {background:#eff6ff;color:#2563eb;border-color:#bfdbfe;}
+.tag-green {background:#f0fdf4;color:#16a34a;border-color:#bbf7d0;}
+.tag-amber {background:#fffbeb;color:#d97706;border-color:#fde68a;}
+.tag-slate {background:#f8fafc;color:#64748b;border-color:#e2e8f0;}
+.tag-violet{background:#f5f3ff;color:#7c3aed;border-color:#ddd6fe;}
 
-  /* ── Formatos ── */
-  .formatos {
-    max-width: 860px;
-    margin: 20px auto 0;
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 14px;
-  }
-  .formato-card {
-    background: white;
-    border-radius: 14px;
-    padding: 18px;
-    text-align: center;
-    box-shadow: 0 2px 10px rgba(0,0,0,.06);
-    border: 1.5px solid #f0f0f0;
-  }
-  .formato-card .fmt-icon { font-size: 32px; margin-bottom: 8px; }
-  .formato-card .fmt-name { font-size: 14px; font-weight: 700; color: #111; }
-  .formato-card .fmt-desc { font-size: 12px; color: #888; margin-top: 4px; }
-  .formato-card .fmt-size {
-    display: inline-block;
-    margin-top: 8px;
-    font-size: 11px;
-    font-weight: 600;
-    background: #fef2f2;
-    color: #e8394a;
-    padding: 2px 8px;
-    border-radius: 20px;
-  }
+/* Paso destacado (ancho completo) */
+.step-card.wide{grid-column:1/-1;}
+.step-card.wide .step-icon-wrap{background:linear-gradient(135deg,#fef2f2,#fff7ed);}
 
-  /* ── Footer ── */
-  .footer {
-    text-align: center;
-    margin-top: 48px;
-    font-size: 12px;
-    color: #bbb;
-  }
+/* ── FORMATOS ── */
+.formats{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:14px;
+  margin-top:4px;
+}
+.fmt{
+  background:var(--white);
+  border:1.5px solid #e2e8f0;
+  border-radius:16px;
+  padding:24px 20px;
+  text-align:center;
+  transition:transform .2s,box-shadow .2s;
+}
+.fmt:hover{transform:translateY(-3px);box-shadow:0 12px 28px rgba(15,23,42,.07);}
+.fmt-emoji{font-size:36px;margin-bottom:12px;display:block;}
+.fmt-name{font-size:15px;font-weight:800;color:var(--dark);margin-bottom:6px;}
+.fmt-desc{font-size:12px;color:var(--mid);line-height:1.6;}
+.fmt-pill{
+  display:inline-block;margin-top:12px;
+  font-size:11px;font-weight:700;
+  padding:4px 12px;border-radius:50px;
+  background:linear-gradient(135deg,#e8394a,#c02030);
+  color:#fff;
+}
 
-  /* ── Responsive ── */
-  @media (max-width: 640px) {
-    .timeline::before { left: 28px; }
-    .step, .step:nth-child(even) { flex-direction: column !important; padding-left: 68px; }
-    .step-num { position: absolute; left: 0; padding-top: 12px; }
-    .step-card { width: 100%; }
-    .step-card::after, .step:nth-child(even) .step-card::after { display: none; }
-    .formatos { grid-template-columns: 1fr; }
-  }
+/* ── CTA FINAL ── */
+.cta{
+  margin-top:16px;
+  background:linear-gradient(135deg,#0f172a,#1e293b);
+  border-radius:20px;
+  padding:40px 48px;
+  display:flex;align-items:center;justify-content:space-between;gap:32px;
+  flex-wrap:wrap;
+}
+.cta-text h3{font-size:20px;font-weight:800;color:#fff;margin-bottom:8px;}
+.cta-text p{font-size:14px;color:#94a3b8;line-height:1.6;max-width:440px;}
+.cta-badge{
+  display:flex;align-items:center;gap:8px;
+  background:rgba(232,57,74,.15);
+  border:1px solid rgba(232,57,74,.3);
+  border-radius:12px;padding:16px 24px;
+  white-space:nowrap;flex-shrink:0;
+}
+.cta-badge .num{font-size:32px;font-weight:900;color:#e8394a;}
+.cta-badge .lbl{font-size:12px;color:#94a3b8;font-weight:500;line-height:1.4;}
+
+/* ── FOOTER ── */
+.footer{text-align:center;padding:32px;font-size:12px;color:var(--light);}
+
+/* ── RESPONSIVE ── */
+@media(max-width:680px){
+  .steps{grid-template-columns:1fr;}
+  .steps::before{display:none;}
+  .step-card.wide{grid-column:auto;}
+  .formats{grid-template-columns:1fr;}
+  .cta{padding:28px 24px;}
+  .cta-badge{width:100%;}
+}
 </style>
 </head>
 <body>
 
-<!-- ── Header ─────────────────────────────────────────────────────────────── -->
-<div class="header">
-  <div class="logo">🧾 Bill-e Web</div>
-  <h1>¿Cómo se registra<br><span>una factura?</span></h1>
-  <p>Guía paso a paso del proceso de radicación manual en el portal Bill-e Web</p>
+<!-- HERO -->
+<div class="hero">
+  <div class="badge">
+    <svg viewBox="0 0 24 24"><path d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" stroke="#fca5a5" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    Bill-e Web · Portal de Facturación
+  </div>
+  <h1>Proceso de<br><em>Radicación</em></h1>
+  <p>Flujo completo para registrar una factura en el sistema, desde el ingreso hasta su gestión por el equipo.</p>
 </div>
 
-<!-- ── Timeline ───────────────────────────────────────────────────────────── -->
-<div class="timeline">
+<div class="wrap">
 
-  <!-- 1 -->
-  <div class="step">
-    <div class="step-card">
-      <div class="step-icon">🔐</div>
-      <div class="step-title">Inicio de sesión</div>
-      <div class="step-desc">El usuario ingresa con su correo y contraseña. El sistema valida las credenciales y emite un token JWT con duración de 8 horas.</div>
-      <div class="chips">
-        <span class="chip chip-red">JWT · 8h</span>
-        <span class="chip chip-gray">bcrypt · 12 rounds</span>
-        <span class="chip chip-yellow">5 intentos máx.</span>
-      </div>
-    </div>
-    <div class="step-num"><div class="circle">1</div></div>
-    <div style="width:calc(50% - 44px)"></div>
+  <!-- PASOS -->
+  <div class="section-label">
+    <div class="line"></div>
+    <span>Flujo paso a paso</span>
+    <div class="line" style="background:linear-gradient(90deg,#e2e8f0,transparent);transform:scaleX(-1);"></div>
   </div>
 
-  <!-- 2 -->
-  <div class="step">
-    <div style="width:calc(50% - 44px)"></div>
-    <div class="step-num"><div class="circle">2</div></div>
+  <div class="steps">
+
+    <!-- 1 -->
     <div class="step-card">
-      <div class="step-icon">📂</div>
-      <div class="step-title">Selección del archivo</div>
-      <div class="step-desc">El usuario carga el documento de la factura arrastrándolo o buscándolo. El sistema valida el formato y el tamaño antes de continuar.</div>
-      <div class="chips">
-        <span class="chip chip-red">PDF · 10 MB</span>
-        <span class="chip chip-blue">XML · 2 MB</span>
-        <span class="chip chip-green">JPG / PNG · 5 MB</span>
+      <div class="step-num">1</div>
+      <div class="step-head">
+        <div class="step-icon-wrap">🔐</div>
+        <div class="step-title">Inicio de sesión</div>
+      </div>
+      <div class="step-desc">El usuario accede con su correo y contraseña. El sistema verifica las credenciales y emite un token seguro con vigencia de 8 horas.</div>
+      <div class="tags">
+        <span class="tag tag-red">JWT · 8 h</span>
+        <span class="tag tag-slate">bcrypt · 12 rondas</span>
+        <span class="tag tag-amber">Máx. 5 intentos</span>
       </div>
     </div>
-  </div>
 
-  <!-- 3 -->
-  <div class="step">
+    <!-- 2 -->
     <div class="step-card">
-      <div class="step-icon">🤖</div>
-      <div class="step-title">Lectura inteligente</div>
-      <div class="step-desc">El sistema analiza el documento automáticamente con el extractor apropiado según el formato y completa los campos del formulario.</div>
-      <div class="chips">
-        <span class="chip chip-blue">XML → Parser DIAN</span>
-        <span class="chip chip-green">PDF → pdf-parse</span>
-        <span class="chip chip-yellow">Imagen → OCR Tesseract</span>
+      <div class="step-num">2</div>
+      <div class="step-head">
+        <div class="step-icon-wrap">📂</div>
+        <div class="step-title">Carga del documento</div>
+      </div>
+      <div class="step-desc">El usuario arrastra o selecciona el archivo de la factura. El sistema valida el tipo y el peso antes de proceder.</div>
+      <div class="tags">
+        <span class="tag tag-red">PDF · 10 MB</span>
+        <span class="tag tag-blue">XML · 2 MB</span>
+        <span class="tag tag-green">JPG / PNG · 5 MB</span>
       </div>
     </div>
-    <div class="step-num"><div class="circle">3</div></div>
-    <div style="width:calc(50% - 44px)"></div>
-  </div>
 
-  <!-- 4 -->
-  <div class="step">
-    <div style="width:calc(50% - 44px)"></div>
-    <div class="step-num"><div class="circle">4</div></div>
+    <!-- 3 -->
     <div class="step-card">
-      <div class="step-icon">✍️</div>
-      <div class="step-title">Revisión y corrección</div>
-      <div class="step-desc">El usuario revisa los campos extraídos (NIT, proveedor, fechas, valores) y corrige lo que sea necesario antes de confirmar.</div>
-      <div class="chips">
-        <span class="chip chip-red">N° Factura</span>
-        <span class="chip chip-gray">NIT / Proveedor</span>
-        <span class="chip chip-gray">Valor Total</span>
-        <span class="chip chip-gray">Fecha Emisión</span>
+      <div class="step-num">3</div>
+      <div class="step-head">
+        <div class="step-icon-wrap">🤖</div>
+        <div class="step-title">Extracción automática</div>
+      </div>
+      <div class="step-desc">El motor de lectura analiza el documento y extrae los datos clave según el formato, precargando el formulario.</div>
+      <div class="tags">
+        <span class="tag tag-blue">XML → Parser DIAN</span>
+        <span class="tag tag-green">PDF → pdf-parse</span>
+        <span class="tag tag-violet">Imagen → Tesseract OCR</span>
       </div>
     </div>
-  </div>
 
-  <!-- 5 -->
-  <div class="step">
+    <!-- 4 -->
     <div class="step-card">
-      <div class="step-icon">🗄️</div>
-      <div class="step-title">Almacenamiento</div>
-      <div class="step-desc">El archivo se guarda en el servidor con nombre único (<code style="font-size:11px;background:#f3f4f6;padding:1px 5px;border-radius:4px">id_unico.ext</code>). Los datos se insertan en la base de datos PostgreSQL.</div>
-      <div class="chips">
-        <span class="chip chip-blue">PostgreSQL</span>
-        <span class="chip chip-gray">uploads/facturas/</span>
-        <span class="chip chip-green">checksum SHA-256</span>
+      <div class="step-num">4</div>
+      <div class="step-head">
+        <div class="step-icon-wrap">✍️</div>
+        <div class="step-title">Revisión de campos</div>
+      </div>
+      <div class="step-desc">El usuario verifica los datos extraídos y corrige cualquier diferencia antes de confirmar el registro.</div>
+      <div class="tags">
+        <span class="tag tag-slate">NIT · Proveedor</span>
+        <span class="tag tag-slate">N° Factura</span>
+        <span class="tag tag-slate">Valor · Fecha</span>
       </div>
     </div>
-    <div class="step-num"><div class="circle">5</div></div>
-    <div style="width:calc(50% - 44px)"></div>
-  </div>
 
-  <!-- 6 -->
-  <div class="step">
-    <div style="width:calc(50% - 44px)"></div>
-    <div class="step-num"><div class="circle">6</div></div>
+    <!-- 5 -->
     <div class="step-card">
-      <div class="step-icon">✅</div>
-      <div class="step-title">Radicación confirmada</div>
-      <div class="step-desc">La factura queda en estado <strong>Pendiente</strong> y aparece en la sección de Gestión. El usuario recibe el ID único del radicado.</div>
-      <div class="chips">
-        <span class="chip chip-yellow">Estado: PENDIENTE</span>
-        <span class="chip chip-red">ID: BILLE-XXXXXXXX</span>
+      <div class="step-num">5</div>
+      <div class="step-head">
+        <div class="step-icon-wrap">🗄️</div>
+        <div class="step-title">Almacenamiento</div>
+      </div>
+      <div class="step-desc">El archivo se guarda con nombre único en el servidor. Los datos se insertan en PostgreSQL con registro de auditoría automático.</div>
+      <div class="tags">
+        <span class="tag tag-blue">PostgreSQL</span>
+        <span class="tag tag-slate">uploads/facturas/</span>
+        <span class="tag tag-green">Auditoría</span>
       </div>
     </div>
-  </div>
 
-  <!-- 7 -->
-  <div class="step">
+    <!-- 6 -->
     <div class="step-card">
-      <div class="step-icon">👥</div>
-      <div class="step-title">Gestión y seguimiento</div>
-      <div class="step-desc">El equipo revisa la factura en la tabla de Gestión, actualiza campos como área, contabilizado por, estado y agrega evidencias o anotaciones.</div>
-      <div class="chips">
-        <span class="chip chip-green">PROCESADA</span>
-        <span class="chip chip-blue">EN REVISIÓN</span>
-        <span class="chip chip-red">RECHAZADA</span>
+      <div class="step-num">6</div>
+      <div class="step-head">
+        <div class="step-icon-wrap">✅</div>
+        <div class="step-title">Radicado confirmado</div>
+      </div>
+      <div class="step-desc">La factura queda registrada con un consecutivo único y pasa al estado <strong>Pendiente</strong>, lista para revisión del equipo.</div>
+      <div class="tags">
+        <span class="tag tag-amber">PENDIENTE</span>
+        <span class="tag tag-red">ELEC-XXXXX</span>
       </div>
     </div>
-    <div class="step-num"><div class="circle">7</div></div>
-    <div style="width:calc(50% - 44px)"></div>
+
+    <!-- 7 — ancho completo -->
+    <div class="step-card wide">
+      <div class="step-num">7</div>
+      <div class="step-head">
+        <div class="step-icon-wrap">👥</div>
+        <div class="step-title">Gestión por el equipo</div>
+      </div>
+      <div class="step-desc">El equipo de cuentas por pagar revisa la factura en la tabla de Gestión: asigna área y responsable, actualiza el estado, agrega evidencias, observaciones y fechas clave hasta completar el ciclo.</div>
+      <div class="tags">
+        <span class="tag tag-green">✓ Procesada</span>
+        <span class="tag tag-blue">◎ En Revisión</span>
+        <span class="tag tag-red">✕ Rechazada</span>
+        <span class="tag tag-slate">Área · Responsable</span>
+        <span class="tag tag-slate">Evidencia fotográfica</span>
+        <span class="tag tag-violet">Alerta de radicado</span>
+      </div>
+    </div>
+
   </div>
 
-</div>
+  <!-- FORMATOS -->
+  <div class="section-label">
+    <div class="line"></div>
+    <span>Formatos aceptados</span>
+    <div class="line" style="background:linear-gradient(90deg,#e2e8f0,transparent);transform:scaleX(-1);"></div>
+  </div>
 
-<!-- ── Formatos aceptados ─────────────────────────────────────────────────── -->
-<div style="max-width:860px;margin:40px auto 0;">
-  <h2 style="font-size:16px;font-weight:800;margin-bottom:16px;display:flex;align-items:center;gap:8px;">
-    📎 Formatos de documento aceptados
-  </h2>
-  <div class="formatos">
-    <div class="formato-card">
-      <div class="fmt-icon">📄</div>
+  <div class="formats">
+    <div class="fmt">
+      <span class="fmt-emoji">📄</span>
       <div class="fmt-name">PDF</div>
-      <div class="fmt-desc">Facturas digitales o escaneadas. Se extrae texto automáticamente.</div>
-      <span class="fmt-size">Máx. 10 MB</span>
+      <div class="fmt-desc">Facturas digitales o escaneadas. Extracción de texto con pdf-parse.</div>
+      <span class="fmt-pill">Máx. 10 MB</span>
     </div>
-    <div class="formato-card">
-      <div class="fmt-icon">🖼️</div>
+    <div class="fmt">
+      <span class="fmt-emoji">🖼️</span>
       <div class="fmt-name">JPG / PNG</div>
-      <div class="fmt-desc">Fotografías de facturas físicas. Se procesa con OCR Tesseract.</div>
-      <span class="fmt-size">Máx. 5 MB</span>
+      <div class="fmt-desc">Fotografías de facturas físicas. Reconocimiento OCR con Tesseract.js.</div>
+      <span class="fmt-pill">Máx. 5 MB</span>
     </div>
-    <div class="formato-card">
-      <div class="fmt-icon">📋</div>
-      <div class="fmt-name">XML</div>
-      <div class="fmt-desc">Facturas electrónicas DIAN (UBL 2.1). Extracción exacta al 100%.</div>
-      <span class="fmt-size">Máx. 2 MB</span>
-    </div>
-  </div>
-</div>
-
-<!-- ── Estados de la factura ─────────────────────────────────────────────── -->
-<div class="estados">
-  <h2>🏷️ Estados del ciclo de vida de una factura</h2>
-  <div class="estados-grid">
-    <div class="estado-card" style="background:#fefce8;border:1.5px solid #fde047;">
-      <div><span class="dot" style="background:#eab308"></span><span class="label" style="color:#92400e;">Pendiente</span></div>
-      <div class="desc">Recién radicada. Espera revisión del equipo de cuentas por pagar.</div>
-    </div>
-    <div class="estado-card" style="background:#eff6ff;border:1.5px solid #93c5fd;">
-      <div><span class="dot" style="background:#3b82f6"></span><span class="label" style="color:#1d4ed8;">En Revisión</span></div>
-      <div class="desc">Asignada a un responsable. En proceso de validación y aprobación.</div>
-    </div>
-    <div class="estado-card" style="background:#f0fdf4;border:1.5px solid #86efac;">
-      <div><span class="dot" style="background:#16a34a"></span><span class="label" style="color:#14532d;">Procesada</span></div>
-      <div class="desc">Aprobada y contabilizada. Ciclo completado exitosamente.</div>
-    </div>
-    <div class="estado-card" style="background:#fef2f2;border:1.5px solid #fca5a5;">
-      <div><span class="dot" style="background:#e8394a"></span><span class="label" style="color:#991b1b;">Rechazada</span></div>
-      <div class="desc">No cumple requisitos. Se notifica al proveedor con motivo de devolución.</div>
+    <div class="fmt">
+      <span class="fmt-emoji">📋</span>
+      <div class="fmt-name">XML · DIAN</div>
+      <div class="fmt-desc">Facturas electrónicas UBL 2.1. Extracción exacta al 100% del estándar DIAN.</div>
+      <span class="fmt-pill">Máx. 2 MB</span>
     </div>
   </div>
+
+  <!-- CTA -->
+  <div class="section-label">
+    <div class="line"></div>
+    <span>Resumen</span>
+    <div class="line" style="background:linear-gradient(90deg,#e2e8f0,transparent);transform:scaleX(-1);"></div>
+  </div>
+
+  <div class="cta">
+    <div class="cta-text">
+      <h3>Radicación rápida y trazable</h3>
+      <p>Desde la carga del archivo hasta la gestión final, cada acción queda registrada en el log de auditoría con usuario, fecha y detalle del cambio.</p>
+    </div>
+    <div class="cta-badge">
+      <div class="num">7</div>
+      <div class="lbl">pasos del<br>proceso</div>
+    </div>
+  </div>
+
 </div>
 
-<!-- ── Footer ─────────────────────────────────────────────────────────────── -->
-<div class="footer">
-  Bill-e Web · Portal de Gestión de Facturación · Versión 1.0
-</div>
+<div class="footer">Bill-e Web · Portal de Gestión de Facturación · CETESA 2026</div>
 
 </body>
 </html>

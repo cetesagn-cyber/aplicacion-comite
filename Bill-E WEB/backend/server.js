@@ -9,10 +9,10 @@ const { setupUsersTable, seedUsers, login, requireAuth } = require('./auth');
 const { extractDocument } = require('./extractor');
 
 // ── Directorios de archivos ───────────────────────────────────────────────────
-const UPLOADS_DIR   = path.join(__dirname, 'uploads', 'facturas');
-const EVIDENCIA_DIR = path.join(__dirname, 'uploads', 'evidencias');
-if (!fs.existsSync(UPLOADS_DIR))   fs.mkdirSync(UPLOADS_DIR,   { recursive: true });
-if (!fs.existsSync(EVIDENCIA_DIR)) fs.mkdirSync(EVIDENCIA_DIR, { recursive: true });
+const DESCARGAS_DIR       = path.join('C:\\', 'Developer', 'Bill-E WEB', 'Descargas BIll-e');
+const EVIDENCIA_DIR       = path.join(__dirname, 'uploads', 'evidencias');
+if (!fs.existsSync(DESCARGAS_DIR))       fs.mkdirSync(DESCARGAS_DIR,       { recursive: true });
+if (!fs.existsSync(EVIDENCIA_DIR))       fs.mkdirSync(EVIDENCIA_DIR,       { recursive: true });
 
 // ── Multer facturas (memoria) ─────────────────────────────────────────────────
 const upload = multer({
@@ -37,7 +37,7 @@ const app  = express();
 const PORT = process.env.PORT || 3001;
 
 // ── Middleware ────────────────────────────────────────────────────────────────
-app.use(cors({ origin: 'http://localhost:5173' }));
+app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 
 // ── Conexión PostgreSQL ───────────────────────────────────────────────────────
@@ -244,6 +244,12 @@ app.use(optionalAuth);
 // ── Servir archivos subidos ───────────────────────────────────────────────────
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// ── Servir frontend compilado (producción) ───────────────────────────────────
+const FRONTEND_DIST = path.join(__dirname, '..', 'frontend', 'dist');
+if (fs.existsSync(FRONTEND_DIST)) {
+  app.use(express.static(FRONTEND_DIST));
+}
+
 // ── POST /api/auth/login ──────────────────────────────────────────────────────
 app.post('/api/auth/login', async (req, res) => {
   try {
@@ -447,12 +453,22 @@ app.post('/api/facturas', upload.single('archivo'), async (req, res) => {
 
     const factura = rows[0];
 
-    // ── Guardar archivo en disco como {id_unico}.{ext} ───────────────────────
+    // ── Guardar archivo en directorio local de descargas ───────────────────
     if (req.file) {
       const ext      = path.extname(req.file.originalname).toLowerCase();
-      const fileName = `${factura.id_unico}${ext}`;
-      const filePath = path.join(UPLOADS_DIR, fileName);
-      fs.writeFileSync(filePath, req.file.buffer);
+      const ts = new Date().toISOString().slice(0, 16).replace(/\D/g, '').replace(/^(.{8})/, '$1-');
+      const fileName = `${ts}_${factura.numero_factura || factura.id_unico}${ext}`;
+      const filePath = path.join(DESCARGAS_DIR, fileName);
+      
+      try {
+        fs.writeFileSync(filePath, req.file.buffer);
+        factura.copia_radicacion = filePath;
+        console.log(`✅ Archivo guardado: ${filePath}`);
+      } catch (e) {
+        console.warn('⚠️  Error guardando archivo en descargas:', e.message);
+        factura.copia_radicacion = null;
+        // No bloquear radicación por error en guardado
+      }
 
       const relativePath = `facturas/${fileName}`;
       const fileType     = (ext.slice(1) === 'jpg' ? 'jpeg' : ext.slice(1));
@@ -464,8 +480,6 @@ app.post('/api/facturas', upload.single('archivo'), async (req, res) => {
          VALUES ($1, $2, $3, $4, $5, $6)`,
         [factura.id, fileName, relativePath, fileType, fileSizeKb, req.file.mimetype]
       );
-
-      factura.archivo = relativePath;
 
       // ── Extracción automática de campos ─────────────────────────────────
       try {
@@ -879,6 +893,77 @@ app.get('/api/reportes/demoras-por-area', async (req, res) => {
 // ═════════════════════════════════════════════════════════════════════════════
 // GET /api/dashboard/por-area  — top radicaciones por área
 // ═════════════════════════════════════════════════════════════════════════════
+// GET /api/reportes/demoras-por-entregado
+// Usuarios de la columna entregado con mayor demora frente a alerta de radicado
+app.get('/api/reportes/demoras-por-entregado', async (req, res) => {
+  try {
+    const { rows } = await pool.query(`
+      WITH base AS (
+        SELECT
+          COALESCE(NULLIF(TRIM(entregado), ''), 'Sin asignar') AS entregado,
+          estado,
+          alerta_radicado,
+          CASE
+            WHEN EXTRACT(HOUR FROM (created_at AT TIME ZONE 'America/Bogota')) >= 17 THEN
+              (created_at AT TIME ZONE 'America/Bogota')::date +
+              CASE EXTRACT(ISODOW FROM (created_at AT TIME ZONE 'America/Bogota'))::int
+                WHEN 5 THEN 3
+                WHEN 6 THEN 2
+                WHEN 7 THEN 1
+                ELSE 1
+              END
+            ELSE (created_at AT TIME ZONE 'America/Bogota')::date
+          END AS fecha_efectiva
+        FROM facturas_procesadas
+        WHERE created_at IS NOT NULL
+          AND NULLIF(TRIM(entregado), '') IS NOT NULL
+      ),
+      calculada AS (
+        SELECT
+          b.*,
+          CASE
+            WHEN CURRENT_DATE <= b.fecha_efectiva THEN 0
+            ELSE (
+              SELECT COUNT(*)::int
+              FROM generate_series(b.fecha_efectiva + 1, CURRENT_DATE, '1 day') AS d
+              WHERE EXTRACT(ISODOW FROM d) <= 5
+            )
+          END AS dias_habiles
+        FROM base b
+      )
+      SELECT
+        entregado,
+        COUNT(*) AS total,
+        COUNT(*) FILTER (WHERE alerta_radicado = 'Alerta') AS alertas,
+        COUNT(*) FILTER (WHERE alerta_radicado = 'Demorado') AS demoradas,
+        COUNT(*) FILTER (WHERE alerta_radicado = 'A tiempo') AS a_tiempo,
+        COUNT(*) FILTER (WHERE estado NOT IN ('PROCESADA','RECHAZADA')) AS activas,
+        ROUND(AVG(dias_habiles) FILTER (WHERE alerta_radicado IN ('Demorado','Alerta')), 1) AS avg_dias_alerta,
+        ROUND(AVG(dias_habiles), 1) AS avg_dias_general,
+        MAX(dias_habiles) AS max_dias
+      FROM calculada
+      GROUP BY entregado
+      HAVING COUNT(*) FILTER (WHERE alerta_radicado IN ('Demorado','Alerta')) > 0
+      ORDER BY alertas DESC, avg_dias_alerta DESC NULLS LAST, demoradas DESC, total DESC
+    `);
+
+    res.json(rows.map(r => ({
+      entregado:        r.entregado,
+      total:            Number(r.total),
+      alertas:          Number(r.alertas),
+      demoradas:        Number(r.demoradas),
+      a_tiempo:         Number(r.a_tiempo),
+      activas:          Number(r.activas),
+      avg_dias_alerta:  Number(r.avg_dias_alerta)  || 0,
+      avg_dias_general: Number(r.avg_dias_general) || 0,
+      max_dias:         Number(r.max_dias)         || 0,
+      riesgo_total:     Number(r.alertas) + Number(r.demoradas),
+    })));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/api/dashboard/por-area', async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit) || 8, 20);
@@ -897,7 +982,25 @@ app.get('/api/dashboard/por-area', async (req, res) => {
   }
 });
 
+// ── Fallback SPA (React Router) ───────────────────────────────────────────────
+if (fs.existsSync(FRONTEND_DIST)) {
+  app.get('*', (_req, res) => {
+    res.sendFile(path.join(FRONTEND_DIST, 'index.html'));
+  });
+}
+
 // ── Arranque ──────────────────────────────────────────────────────────────────
-app.listen(PORT, () => {
-  console.log(`🚀 Bill-e API corriendo en http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  const { networkInterfaces } = require('os');
+  const nets = networkInterfaces();
+  let localIp = 'localhost';
+  for (const iface of Object.values(nets)) {
+    for (const net of iface) {
+      if (net.family === 'IPv4' && !net.internal) { localIp = net.address; break; }
+    }
+    if (localIp !== 'localhost') break;
+  }
+  console.log(`🚀 Bill-e corriendo en:`);
+  console.log(`   Local:   http://localhost:${PORT}`);
+  console.log(`   Red:     http://${localIp}:${PORT}`);
 });

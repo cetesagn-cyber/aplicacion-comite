@@ -41,8 +41,8 @@ function highlightXml(xml: string): string {
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/(&lt;\/?)([\w:\-]+)/g, '<span style="color:#e8394a;font-weight:600">$1$2</span>')
-    .replace(/([\w:\-]+)(=)(&quot;[^&]*&quot;)/g,
+    .replace(/(&lt;\/?)([\w:-]+)/g, '<span style="color:#e8394a;font-weight:600">$1$2</span>')
+    .replace(/([\w:-]+)(=)(&quot;[^&]*&quot;)/g,
       '<span style="color:#0369a1">$1</span><span style="color:#555">$2</span><span style="color:#16a34a">$3</span>')
     .replace(/(&lt;!--[\s\S]*?--&gt;)/g, '<span style="color:#9ca3af;font-style:italic">$1</span>');
 }
@@ -154,6 +154,7 @@ export default function Radicacion() {
   const [zoom, setZoom] = useState(100);
   const [form, setForm] = useState<FormData>({ ...emptyForm });
   const [submitted, setSubmitted] = useState(false);
+  const [confirmEnabled, setConfirmEnabled] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDrag = (e: React.DragEvent) => {
@@ -167,12 +168,20 @@ export default function Radicacion() {
     e.stopPropagation();
     setDragActive(false);
     const f = e.dataTransfer.files[0];
-    if (f) { setFile(f); runExtraction(f); }
+    if (f) {
+      setFile(f);
+      setConfirmEnabled(false);
+      runExtraction(f);
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
-    if (f) { setFile(f); runExtraction(f); }
+    if (f) {
+      setFile(f);
+      setConfirmEnabled(false);
+      runExtraction(f);
+    }
   };
 
   const removeFile = () => {
@@ -180,8 +189,19 @@ export default function Radicacion() {
     setZoom(100);
     setExtraction(null);
     setForm({ ...emptyForm });
+    setConfirmEnabled(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
+
+  async function parseJsonSafe(res: Response) {
+    const text = await res.text();
+    if (!text) return {};
+    try {
+      return JSON.parse(text);
+    } catch {
+      return { message: text };
+    }
+  }
 
   const runExtraction = async (f: File) => {
     setExtracting(true);
@@ -191,7 +211,7 @@ export default function Radicacion() {
       fd.append('archivo', f);
       const res = await fetch('/api/extract', { method: 'POST', body: fd });
       if (!res.ok) return;
-      const data = await res.json();
+      const data = await parseJsonSafe(res);
       const c = data.campos || {};
       // Poblar solo campos vacíos
       setForm(prev => ({
@@ -219,17 +239,16 @@ export default function Radicacion() {
   const [apiError,    setApiError]    = useState('');
   const [submitting,  setSubmitting]  = useState(false);
   const [idUnico,     setIdUnico]     = useState('');
+  const [savedCopy,   setSavedCopy]   = useState('');
   const [extracting,  setExtracting]  = useState(false);
   const [extraction,  setExtraction]  = useState<{ metodo: string; confianza_global: number } | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!file) return;
+  const submitFactura = async (selectedFile: File) => {
     setApiError('');
     setSubmitting(true);
     try {
       const formData = new FormData();
-      formData.append('archivo',           file);
+      formData.append('archivo',           selectedFile);
       formData.append('nit_proveedor',     form.nit);
       formData.append('nombre_proveedor',  form.empresa);
       formData.append('numero_factura',    form.numeroFactura);
@@ -248,13 +267,13 @@ export default function Radicacion() {
         body:   formData,
       });
 
+      const data = await parseJsonSafe(res);
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || `Error ${res.status}`);
+        throw new Error(data.error || data.message || `Error ${res.status}`);
       }
 
-      const data = await res.json();
       setIdUnico(data.id_unico || '');
+      setSavedCopy(data.copia_radicacion || '');
       setSubmitted(true);
     } catch (err: any) {
       setApiError(err.message || 'Error al radicar la factura');
@@ -263,15 +282,32 @@ export default function Radicacion() {
     }
   };
 
+  const canSubmit = !!file && !submitting && !!form.origen && !!form.nit && !!form.empresa && !!form.numeroFactura && !!form.fechaEmision && !!form.valorBase && !!form.valorTotal;
+  const showSubmitButton = canSubmit && confirmEnabled;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!file || !showSubmitButton) return;
+    await submitFactura(file);
+  };
+
   const handleReset = () => {
     setFile(null);
     setForm({ ...emptyForm });
     setSubmitted(false);
+    setSavedCopy('');
     setZoom(100);
+    setConfirmEnabled(false);
   };
 
-  const setField = (key: keyof FormData, value: string | boolean) =>
+  const setField = (key: keyof FormData, value: string | boolean) => {
+    setConfirmEnabled(false);
     setForm(f => ({ ...f, [key]: value }));
+  };
+
+  React.useEffect(() => {
+    if (!canSubmit) setConfirmEnabled(false);
+  }, [canSubmit]);
 
   const inputClass = "w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white";
   const labelClass = "block text-xs font-semibold text-gray-600 mb-1";
@@ -279,26 +315,78 @@ export default function Radicacion() {
   // ── Pantalla de éxito ──────────────────────────────────────────────────────
   if (submitted) {
     return (
-      <div className="max-w-lg mx-auto mt-20 text-center space-y-6">
-        <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-          <CheckCircle size={44} className="text-green-600" />
-        </div>
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">¡Factura Radicada!</h2>
-          <p className="text-gray-500 mt-2 text-sm">
-            La factura <span className="font-semibold text-gray-700">{form.numeroFactura || file?.name}</span> fue radicada exitosamente y quedará en estado <span className="font-semibold text-yellow-700">Pendiente</span>.
-          </p>
-        </div>
-        {idUnico && (
-          <div className="bg-gray-50 border border-gray-200 rounded-xl px-6 py-4 text-left space-y-1">
-            <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">ID Único de radicado</p>
-            <p className="text-lg font-bold text-gray-800 font-mono tracking-wide">{idUnico}</p>
-            <p className="text-xs text-gray-400">El archivo fue guardado como <span className="font-mono text-gray-600">{idUnico}.{file?.name.split('.').pop()?.toLowerCase()}</span></p>
+      <div className="max-w-2xl mx-auto mt-12 space-y-6">
+        <div className="text-center space-y-4">
+          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+            <CheckCircle size={44} className="text-green-600" />
           </div>
-        )}
+          <div>
+            <h2 className="text-3xl font-bold text-gray-900">¡Factura Radicada!</h2>
+            <p className="text-gray-600 mt-2">
+              La factura <span className="font-semibold text-gray-800">{form.numeroFactura || file?.name}</span> fue procesada exitosamente.
+            </p>
+          </div>
+        </div>
+
+        {/* Información de radicación */}
+        <div className="grid grid-cols-2 gap-4">
+          {/* Estado */}
+          <div className="bg-blue-50 border border-blue-200 rounded-xl px-5 py-4">
+            <p className="text-xs text-blue-600 uppercase tracking-wider font-semibold mb-2">Estado</p>
+            <p className="text-lg font-bold text-blue-900">Pendiente</p>
+            <p className="text-xs text-blue-600 mt-1">Aguardando verificación y procesamiento</p>
+          </div>
+
+          {/* ID Único */}
+          {idUnico && (
+            <div className="bg-purple-50 border border-purple-200 rounded-xl px-5 py-4">
+              <p className="text-xs text-purple-600 uppercase tracking-wider font-semibold mb-2">ID Único</p>
+              <p className="text-lg font-bold font-mono text-purple-900 break-all">{idUnico}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Información de archivo guardado */}
+        <div className="bg-green-50 border border-green-200 rounded-xl px-6 py-4 space-y-3">
+          <div className="flex items-start gap-3">
+            <div className="w-6 h-6 rounded-full bg-green-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <span className="text-white text-sm font-bold">✓</span>
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-green-900">Archivo guardado automáticamente</p>
+              <p className="text-xs text-green-700 mt-0.5">Se creó una copia sin interacción adicional</p>
+            </div>
+          </div>
+          {savedCopy && (
+            <div className="ml-9 bg-white border border-green-100 rounded-lg p-3 space-y-1">
+              <p className="text-xs font-mono text-gray-500">Ubicación:</p>
+              <p className="text-sm font-mono text-gray-800 break-all font-semibold">{savedCopy}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Próximos pasos */}
+        <div className="bg-gray-50 border border-gray-200 rounded-xl px-6 py-4">
+          <p className="text-sm font-semibold text-gray-900 mb-2">Próximos pasos:</p>
+          <ul className="space-y-2 text-sm text-gray-700">
+            <li className="flex gap-2">
+              <span className="text-gray-400 font-semibold">1.</span>
+              <span>La factura está en estado <span className="font-semibold">Pendiente</span> en el módulo de Gestión</span>
+            </li>
+            <li className="flex gap-2">
+              <span className="text-gray-400 font-semibold">2.</span>
+              <span>El operador debe revisar y procesarla</span>
+            </li>
+            <li className="flex gap-2">
+              <span className="text-gray-400 font-semibold">3.</span>
+              <span>El archivo se ha almacenado en el directorio local de radicaciones</span>
+            </li>
+          </ul>
+        </div>
+
         <button
           onClick={handleReset}
-          className="px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-semibold transition-colors shadow-sm"
+          className="w-full px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-semibold transition-colors shadow-sm"
         >
           Radicar otra factura
         </button>
@@ -519,6 +607,18 @@ export default function Radicacion() {
               </div>
             )}
 
+            {file && !canSubmit && (
+              <div className="mx-5 mb-2 px-4 py-3 bg-yellow-50 border border-yellow-200 rounded-xl text-sm text-yellow-700">
+                Complete los campos obligatorios antes de confirmar.
+              </div>
+            )}
+
+            {file && canSubmit && !confirmEnabled && (
+              <div className="mx-5 mb-2 px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl text-sm text-blue-700">
+                Los datos están completos. Presione <strong>Revisar y habilitar radicado</strong> para activar el botón Confirmar y Radicar.
+              </div>
+            )}
+
             {/* Botones */}
             <div className="px-5 pb-5 pt-3 border-t border-gray-200 flex justify-end gap-3 bg-gray-50/40 shrink-0">
               <button
@@ -528,15 +628,25 @@ export default function Radicacion() {
               >
                 Cancelar
               </button>
-              <button
-                type="submit"
-                disabled={!file || submitting}
-                className="flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-bold text-white transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ background: !file || submitting ? '#9ca3af' : '#e8394a' }}
-              >
-                <CheckCircle size={17} />
-                {submitting ? 'Radicando…' : 'Confirmar y Radicar'}
-              </button>
+              {file && canSubmit && !confirmEnabled && (
+                <button
+                  type="button"
+                  onClick={() => setConfirmEnabled(true)}
+                  className="flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 transition-all shadow-sm"
+                >
+                  Revisar y habilitar radicado
+                </button>
+              )}
+              {showSubmitButton && (
+                <button
+                  type="submit"
+                  className="flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-bold text-white transition-all shadow-sm"
+                  style={{ background: '#e8394a' }}
+                >
+                  <CheckCircle size={17} />
+                  {submitting ? 'Radicando…' : 'Confirmar y Radicar'}
+                </button>
+              )}
             </div>
           </form>
         </div>

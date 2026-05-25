@@ -47,6 +47,18 @@ async function seedUsers(pool) {
       full_name: 'G. Niño — Registro de Facturas',
       role:      'operador',
     },
+    {
+      email:     'jgalindo@cetesa.com.co',
+      password:  'Cetesa.2030',
+      full_name: 'J. Galindo',
+      role:      'operador',
+    },
+    {
+      email:     'recepcion@cetesa.com.co',
+      password:  'Cetesa.2030',
+      full_name: 'Recepcion CETESA',
+      role:      'operador',
+    },
   ];
 
   for (const u of users) {

@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   UserPlus, Edit3, Trash2, X, Save, AlertTriangle,
-  Shield, User, Eye, EyeOff, RefreshCw, CheckCircle, XCircle,
+  Eye, EyeOff, RefreshCw, CheckCircle, XCircle,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 

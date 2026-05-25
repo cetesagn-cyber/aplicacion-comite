@@ -11,6 +11,7 @@ const pdfParse     = require('pdf-parse');
 const { XMLParser } = require('fast-xml-parser');
 const Tesseract    = require('tesseract.js');
 const path         = require('path');
+const { createChatCompletion, isAiConfigured } = require('./aiClient');
 
 // ── Utilidades ────────────────────────────────────────────────────────────────
 
@@ -42,6 +43,78 @@ function calcularConfianzaGlobal(campos) {
                   'fecha_emision','valor_base','iva','valor_total'];
   const encontrados = claves.filter(k => campos[k] !== null && campos[k] !== undefined).length;
   return Math.round((encontrados / claves.length) * 100);
+}
+
+function str(value) {
+  if (value === null || value === undefined) return null;
+  return String(value).trim() || null;
+}
+
+function parseJsonFromText(text) {
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const candidate = fenced ? fenced[1] : text.match(/({[\s\S]*})/m)?.[1];
+  if (!candidate) throw new Error('No se encontró JSON en la respuesta');
+  return JSON.parse(candidate);
+}
+
+function normalizeAiFields(raw) {
+  return {
+    numero_factura: str(raw.numero_factura),
+    nit_proveedor: str(raw.nit_proveedor),
+    nombre_proveedor: str(raw.nombre_proveedor),
+    fecha_emision: limpiarFecha(str(raw.fecha_emision)),
+    fecha_vencimiento: limpiarFecha(str(raw.fecha_vencimiento)),
+    cufe: str(raw.cufe),
+    valor_base: limpiarNumero(raw.valor_base),
+    iva: limpiarNumero(raw.iva),
+    valor_total: limpiarNumero(raw.valor_total),
+    orden_compra: str(raw.orden_compra),
+    es_proforma: raw.es_proforma === true || /pro[\s\-]?forma/i.test(str(raw.es_proforma) || '') || false,
+  };
+}
+
+function shouldUseAI(campos) {
+  const required = ['numero_factura', 'nit_proveedor', 'nombre_proveedor', 'fecha_emision', 'valor_total'];
+  if (!isAiConfigured()) return false;
+  if (campos.confianza_global >= 70) return false;
+  return required.some(key => !campos.campos?.[key]);
+}
+
+async function extractFromAI(text, metodo) {
+  if (!isAiConfigured()) throw new Error('OpenAI API key no configurada');
+
+  const outputText = await createChatCompletion([
+    {
+      role: 'system',
+      content: 'Eres un extractor de facturas. Responde únicamente con JSON válido.',
+    },
+    {
+      role: 'user',
+      content:
+        'Extrae estas propiedades: numero_factura, nit_proveedor, nombre_proveedor, fecha_emision, fecha_vencimiento, cufe, valor_base, iva, valor_total, orden_compra, es_proforma.\n' +
+        'Usa fechas en formato YYYY-MM-DD y números sin separadores de miles. Si un valor no puede encontrarse, devuélvelo como null.\n\n' +
+        `Texto:\n${text}`,
+    },
+  ], { json: true, temperature: 0 });
+
+  const aiData = parseJsonFromText(outputText);
+  const campos = normalizeAiFields(aiData);
+
+  return {
+    metodo: `${metodo}-ai`,
+    campos,
+    confianza_global: calcularConfianzaGlobal(campos),
+  };
+}
+
+async function tryAiEnhancement(result, text, metodo) {
+  if (!shouldUseAI(result)) return result;
+  try {
+    return await extractFromAI(text, metodo);
+  } catch (e) {
+    console.warn('⚠️  Extracción AI fallida:', e.message);
+    return result;
+  }
 }
 
 // ── 1. Extractor XML — Factura Electrónica DIAN (UBL 2.1) ────────────────────
@@ -141,16 +214,42 @@ async function extractFromPDF(buffer) {
     throw new Error('PDF sin texto embebido — usar OCR');
   }
 
-  return { ...extractFromText(text, 'pdf-parse'), texto_extraido: text.slice(0, 3000) };
+  const extracted = await extractFromText(text, 'pdf-parse');
+  const enhanced  = await tryAiEnhancement(extracted, text, 'pdf-parse');
+  return { ...enhanced, texto_extraido: text.slice(0, 3000) };
 }
 
 // ── 3. Extractor imagen/PDF escaneado — Tesseract OCR ────────────────────────
 
 async function extractFromImage(buffer) {
-  const { data: { text } } = await Tesseract.recognize(buffer, 'spa+eng', {
-    logger: () => {},
-  });
-  return { ...extractFromText(text || '', 'tesseract-ocr'), texto_extraido: text.slice(0, 3000) };
+  let text = '';
+  try {
+    // Establecer timeout para Tesseract (30 segundos máximo)
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Tesseract timeout después de 30s')), 30000)
+    );
+    
+    const recognitionPromise = Tesseract.recognize(buffer, 'spa+eng', {
+      logger: () => {},
+    });
+    
+    const { data: { text: recognizedText } } = await Promise.race([recognitionPromise, timeoutPromise]);
+    text = recognizedText || '';
+  } catch (err) {
+    console.warn('⚠️  Tesseract OCR error:', err.message);
+    // Si Tesseract falla, retornar resultado vacío pero sin crashear
+    return {
+      metodo: 'tesseract-ocr-error',
+      campos: {},
+      confianza_global: 0,
+      error: 'No se pudo procesar la imagen con OCR: ' + err.message,
+      texto_extraido: '',
+    };
+  }
+
+  const extracted = await extractFromText(text || '', 'tesseract-ocr');
+  const enhanced  = await tryAiEnhancement(extracted, text || '', 'tesseract-ocr');
+  return { ...enhanced, texto_extraido: text.slice(0, 3000) };
 }
 
 // ── Extracción de campos desde texto plano (compartida por PDF + OCR) ─────────
@@ -239,8 +338,18 @@ async function extractDocument(buffer, mimetype, filename) {
       } catch (e) {
         // PDF escaneado sin texto — fallback a OCR
         console.log('⚠️  PDF sin texto embebido, usando OCR:', e.message);
-        resultado = await extractFromImage(buffer);
-        resultado.metodo = 'tesseract-ocr (pdf-fallback)';
+        try {
+          resultado = await extractFromImage(buffer);
+          resultado.metodo = 'tesseract-ocr (pdf-fallback)';
+        } catch (ocrErr) {
+          console.warn('⚠️  OCR también falló:', ocrErr.message);
+          resultado = {
+            metodo: 'fallback-failed',
+            campos: {},
+            confianza_global: 0,
+            error: 'No se pudo procesar el PDF: ' + ocrErr.message,
+          };
+        }
       }
     } else if (['image/jpeg','image/png','image/jpg'].includes(mimetype) || ['.jpg','.jpeg','.png'].includes(ext)) {
       resultado = await extractFromImage(buffer);
@@ -248,6 +357,7 @@ async function extractDocument(buffer, mimetype, filename) {
       resultado = { metodo: 'none', campos: {}, confianza_global: 0 };
     }
   } catch (err) {
+    console.error('❌ Error critical en extractDocument:', err.message);
     resultado = { metodo: 'error', campos: {}, confianza_global: 0, error: err.message };
   }
 

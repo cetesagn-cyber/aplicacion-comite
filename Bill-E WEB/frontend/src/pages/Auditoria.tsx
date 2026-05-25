@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ShieldCheck, ChevronLeft, ChevronRight, RefreshCw, Search, Filter } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -17,7 +17,7 @@ interface AuditRecord {
   created_at: string;
 }
 
-const authHeader = () => {
+const authHeader = (): Record<string, string> => {
   const t = localStorage.getItem('billee_token');
   return t ? { Authorization: `Bearer ${t}` } : {};
 };
@@ -118,8 +118,8 @@ export default function Auditoria() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <ShieldCheck size={22} style={{ color: '#e8394a' }} />
-            <h1 className="text-xl font-bold" style={{ color: '#2e2e30' }}>Auditoría</h1>
+            <ShieldCheck size={22} className="text-[#e8394a]" />
+            <h1 className="text-xl font-bold text-[#2e2e30]">Auditoría</h1>
           </div>
           <p className="text-sm text-gray-500 mt-0.5">Registro de inserciones y modificaciones por usuario</p>
         </div>
@@ -147,6 +147,7 @@ export default function Auditoria() {
           <select
             value={filterAccion}
             onChange={e => { setFilterAccion(e.target.value); setPage(1); }}
+            aria-label="Filtrar por acción"
             className="text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-200 bg-white"
           >
             <option value="">Todas las acciones</option>
@@ -160,11 +161,11 @@ export default function Auditoria() {
       {/* Tabla */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-xs" style={{ borderCollapse: 'collapse' }}>
+          <table className="w-full text-xs border-collapse">
             <thead>
-              <tr style={{ background: '#f8f4f4' }}>
+              <tr className="bg-[#f8f4f4]">
                 {['Fecha / Hora', 'Usuario', 'Rol', 'Acción', 'Factura ID', 'Cambios', 'IP'].map(h => (
-                  <th key={h} style={{ border: '1px solid #e8e0e0', padding: '8px 10px', fontWeight: 700, color: '#555558', textAlign: 'left', whiteSpace: 'nowrap' }}>
+                  <th key={h} className="border border-[#e8e0e0] px-3 py-2 font-semibold text-[#555558] text-left whitespace-nowrap">
                     {h}
                   </th>
                 ))}
@@ -184,32 +185,31 @@ export default function Auditoria() {
                   </td>
                 </tr>
               ) : records.map((r, i) => (
-                <tr key={r.id} style={{ background: i % 2 === 0 ? '#fff' : '#fafafa' }}
-                  className="hover:bg-red-50/30 transition-colors">
-                  <td style={{ border: '1px solid #e8e0e0', padding: '6px 10px', whiteSpace: 'nowrap', color: '#555558' }}>
+                <tr key={r.id} className={cn('hover:bg-red-50/30 transition-colors', i % 2 === 0 ? 'bg-white' : 'bg-[#fafafa]')}>
+                  <td className="border border-[#e8e0e0] px-3 py-2 whitespace-nowrap text-[#555558]">
                     {fmtDate(r.created_at)}
                   </td>
-                  <td style={{ border: '1px solid #e8e0e0', padding: '6px 10px', whiteSpace: 'nowrap' }}>
+                  <td className="border border-[#e8e0e0] px-3 py-2 whitespace-nowrap">
                     <div className="font-semibold text-gray-700">{r.usuario_nombre ?? <span className="text-gray-400 italic">Anónimo</span>}</div>
                     {r.usuario_email && <div className="text-gray-400 text-[10px]">{r.usuario_email}</div>}
                   </td>
-                  <td style={{ border: '1px solid #e8e0e0', padding: '6px 10px' }}>
+                  <td className="border border-[#e8e0e0] px-3 py-2">
                     {r.usuario_rol
                       ? <span className="capitalize px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-600">{r.usuario_rol}</span>
                       : <span className="text-gray-300">—</span>}
                   </td>
-                  <td style={{ border: '1px solid #e8e0e0', padding: '6px 10px' }}>
+                  <td className="border border-[#e8e0e0] px-3 py-2">
                     <span className={cn('px-2.5 py-0.5 rounded-full text-[10px] font-bold border', accionBadge[r.accion])}>
                       {accionLabel[r.accion] ?? r.accion}
                     </span>
                   </td>
-                  <td style={{ border: '1px solid #e8e0e0', padding: '6px 10px', textAlign: 'center' }}>
+                  <td className="border border-[#e8e0e0] px-3 py-2 text-center">
                     {r.entidad_id ?? <span className="text-gray-300">—</span>}
                   </td>
-                  <td style={{ border: '1px solid #e8e0e0', padding: '6px 10px' }}>
+                  <td className="border border-[#e8e0e0] px-3 py-2">
                     <DiffCell prev={r.valor_previo} next={r.valor_nuevo} />
                   </td>
-                  <td style={{ border: '1px solid #e8e0e0', padding: '6px 10px', color: '#87878b', whiteSpace: 'nowrap' }}>
+                  <td className="border border-[#e8e0e0] px-3 py-2 text-[#87878b] whitespace-nowrap">
                     {r.ip ?? '—'}
                   </td>
                 </tr>
@@ -227,6 +227,8 @@ export default function Auditoria() {
             <button
               disabled={page <= 1}
               onClick={() => setPage(p => p - 1)}
+              title="Página anterior"
+              aria-label="Página anterior"
               className="p-1.5 rounded-md border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               <ChevronLeft size={14} />
@@ -234,6 +236,8 @@ export default function Auditoria() {
             <button
               disabled={page >= totalPages}
               onClick={() => setPage(p => p + 1)}
+              title="Página siguiente"
+              aria-label="Página siguiente"
               className="p-1.5 rounded-md border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               <ChevronRight size={14} />

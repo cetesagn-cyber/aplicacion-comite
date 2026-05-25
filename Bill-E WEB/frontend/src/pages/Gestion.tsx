@@ -1,10 +1,41 @@
-import React, { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
+import {
+  useState,
+  useEffect,
+  useLayoutEffect,
+  useCallback,
+  useRef,
+  cloneElement,
+  type CSSProperties,
+  type ReactElement,
+} from 'react';
 import {
   Search, Download, Edit3, Trash2, Eye, Filter,
-  X, Save, AlertTriangle, ChevronLeft, ChevronRight, RefreshCw,
-  Camera, ZoomIn, Loader2, Sliders, Pin, PinOff, BookmarkCheck,
+  X, Save, AlertTriangle, ChevronLeft, ChevronRight, ChevronDown, RefreshCw,
+  Camera, ZoomIn, Loader2, Sliders, Pin, BookmarkCheck,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
+
+function countBusinessDaysSince(fechaRadicado: string): number | null {
+  if (!fechaRadicado) return null;
+  const startDate = new Date(fechaRadicado);
+  if (Number.isNaN(startDate.getTime())) return null;
+  const endDate = new Date();
+  startDate.setHours(0, 0, 0, 0);
+  endDate.setHours(0, 0, 0, 0);
+  if (endDate <= startDate) return 0;
+
+  let count = 0;
+  const current = new Date(startDate);
+  current.setDate(current.getDate() + 1);
+
+  while (current <= endDate) {
+    const day = current.getDay();
+    if (day !== 0 && day !== 6) count += 1;
+    current.setDate(current.getDate() + 1);
+  }
+
+  return count;
+}
 
 // ── Tipos ────────────────────────────────────────────────────────────────────
 interface Factura {
@@ -23,7 +54,6 @@ interface Factura {
   // Columnas operativas
   ampliacion_observacion: string;
   motivo_demora: string;
-  rechazado: string;
   fecha_contabilizado: string;
   doc_contable: string;
   dias: string;
@@ -57,13 +87,13 @@ interface Factura {
 }
 
 const MONEDA_OPTIONS = [
-  { code: 'COP', label: 'COP — Peso colombiano'       },
-  { code: 'USD', label: 'USD — Dólar estadounidense'  },
-  { code: 'EUR', label: 'EUR — Euro'                  },
-  { code: 'GBP', label: 'GBP — Libra esterlina'       },
-  { code: 'MXN', label: 'MXN — Peso mexicano'         },
-  { code: 'BRL', label: 'BRL — Real brasileño'        },
-  { code: 'CLP', label: 'CLP — Peso chileno'          },
+  { code: 'COP', label: 'COP', description: 'Peso colombiano' },
+  { code: 'USD', label: 'USD', description: 'Dólar estadounidense' },
+  { code: 'EUR', label: 'EUR', description: 'Euro' },
+  { code: 'GBP', label: 'GBP', description: 'Libra esterlina' },
+  { code: 'MXN', label: 'MXN', description: 'Peso mexicano' },
+  { code: 'BRL', label: 'BRL', description: 'Real brasileño' },
+  { code: 'CLP', label: 'CLP', description: 'Peso chileno' },
   { code: 'PEN', label: 'PEN — Sol peruano'           },
   { code: 'ARS', label: 'ARS — Peso argentino'        },
   { code: 'CNY', label: 'CNY — Yuan chino'            },
@@ -76,7 +106,7 @@ const AREA_OPTIONS = [
   'Financiera', 'Mantenimiento', 'Materia Prima', 'Minas', 'Mortero',
   'Producción', 'Sistemas', 'Transporte Materia Prima', 'TTHH',
 ];
-const fmtConsecutivo = (n: number) => `ELEC-${String(n).padStart(5, '0')}`;
+const fmtConsecutivo = (n: number) => `BEL${String(n).padStart(6, '0')}`;
 
 interface ColFilters {
   col_numero_factura: string;
@@ -99,8 +129,8 @@ const COLUMNS: { key: string; label: string }[] = [
   { key: 'consecutivo',     label: 'Consecutivo' },
   { key: 'area',            label: 'Área' },
   { key: 'entregado',       label: 'Entregado' },
-  { key: 'fecha_emision',    label: 'Fecha Radicado' },
-  { key: 'alerta_radicado', label: 'Alerta de Radicado' },
+  { key: 'fecha_emision',    label: 'F. Radicado' },
+  { key: 'alerta_radicado', label: 'F. Alerta' },
   { key: 'nit_proveedor',   label: 'NIT' },
   { key: 'nombre_proveedor',label: 'Tercero' },
   { key: 'numero_factura',  label: 'N° Factura' },
@@ -110,15 +140,13 @@ const COLUMNS: { key: string; label: string }[] = [
   { key: 'tipo_moneda',     label: 'Moneda' },
   { key: 'ampliacion_observacion', label: 'Ampliación Obs.' },
   { key: 'motivo_demora',   label: 'Motivo Demora' },
-  { key: 'rechazado',       label: 'Rechazado' },
   { key: 'fecha_contabilizado', label: 'Fecha Contabilizado' },
   { key: 'doc_contable',    label: 'Doc. Contable' },
   { key: 'dias',            label: 'Días' },
   { key: 'fecha_entrega_tesoreria',      label: 'Fecha Entrega Tesorería' },
   { key: 'fecha_de_dev_a_recepcion',     label: 'Fecha Dev. Recepción' },
   { key: 'motivo_devolucion',            label: 'Motivo Devolución' },
-  { key: 'fecha_envio_rechazo_recepcion_al_cliente', label: 'Fecha Envío Rechazo al Cliente' },
-  { key: 'dias_rechazo_recepcion_vs_asignacion',     label: 'Días Rechazo vs Asignación' },
+  { key: 'fecha_envio_rechazo_recepcion_al_cliente', label: 'Fecha Envío Rechazo' },
   { key: 'acuse_recibido_dian',  label: 'Acuse Recibido DIAN' },
   { key: 'recibo_de_mercancia',  label: 'Recibo Mercancía' },
   { key: 'aceptacion_o_rechazo', label: 'Aceptación/Rechazo' },
@@ -145,7 +173,7 @@ const statusLabels: Record<string, string> = {
   EN_REVISION: 'En Revisión',
 };
 
-const authHeader = () => {
+const authHeader = (): Record<string, string> => {
   const t = localStorage.getItem('billee_token');
   return t ? { Authorization: `Bearer ${t}` } : {};
 };
@@ -156,6 +184,57 @@ const fmt = (v: string | number | null) =>
 const INP = 'w-full text-xs border border-gray-300 rounded px-2 py-1 focus:ring-1 focus:ring-red-200 focus:border-red-300 outline-none bg-white placeholder-gray-400';
 
 const SI_NO = ['', 'SI', 'NO'];
+
+function CurrencyPicker({ value, onChange, minWidth = 110 }: { value: string; onChange: (value: string) => void; minWidth?: number }) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (rootRef.current && !rootRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, []);
+
+  const selected = MONEDA_OPTIONS.find(option => option.code === value) ?? MONEDA_OPTIONS[0];
+
+  return (
+    <div ref={rootRef} className="relative inline-block" style={{ minWidth: Math.max(minWidth, 80) }}>
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center justify-between gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-800 outline-none transition-shadow duration-150 hover:border-gray-400 hover:shadow-sm focus:border-red-300 focus:ring-1 focus:ring-red-200"
+      >
+        <span className="uppercase tracking-widest">{selected.label}</span>
+        <ChevronDown size={16} className="text-gray-500" />
+      </button>
+
+      {open && (
+        <div className="absolute z-50 mt-2 w-full max-h-64 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl">
+          {MONEDA_OPTIONS.map(option => (
+            <button
+              key={option.code}
+              type="button"
+              onClick={() => { onChange(option.code); setOpen(false); }}
+              className="w-full px-3 py-3 text-left transition-colors duration-150 hover:bg-gray-50 focus:bg-gray-50"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm font-semibold text-gray-900">{option.code}</span>
+                {option.code === selected.code && (
+                  <span className="rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold text-red-700">Activo</span>
+                )}
+              </div>
+              <div className="text-[11px] text-gray-500 mt-0.5">{option.description}</div>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ── Celda editable inline ────────────────────────────────────────────────────
 function EditCell({
@@ -259,7 +338,7 @@ function EvidenciaCell({ facturaId, url, onUpdate, stickyStyle }: {
     } catch { /* silencioso */ }
   };
 
-  const imgSrc = url ? `http://localhost:3001/uploads/${url}` : null;
+  const imgSrc = url ? `/uploads/${url}` : null;
 
   return (
     <td style={{ border: '1px solid #e8e0e0', padding: '4px 6px', textAlign: 'center', minWidth: 90, ...(stickyStyle || {}) }}>
@@ -366,7 +445,15 @@ function EditModal({ factura, onSave, onClose }: { factura: Factura; onSave: (f:
 
   const handleSave = async () => {
     setSaving(true);
-    await onSave(form);
+    // Enviar sólo los campos que cambiaron (diff) para evitar enviar objetos completos
+    const patch: Partial<Factura> = {};
+    Object.keys(form).forEach(k => {
+      const key = k as keyof Factura;
+      const newVal = (form as any)[key];
+      const oldVal = (factura as any)[key];
+      if (newVal !== oldVal) patch[key] = newVal as any;
+    });
+    await onSave(patch);
     setSaving(false);
   };
 
@@ -423,7 +510,7 @@ function DetailModal({ factura, onClose }: { factura: Factura; onClose: () => vo
         <div className="flex items-center justify-between p-5 border-b border-gray-200 sticky top-0 bg-white rounded-t-2xl z-10">
           <div>
             <h2 className="text-lg font-bold text-gray-900">Detalle de Factura</h2>
-            <p className="text-xs text-gray-400">Consecutivo #{factura.consecutivo} · {factura.id_unico}</p>
+            <p className="text-xs text-gray-400">Consecutivo {fmtConsecutivo(factura.consecutivo)} · {factura.id_unico}</p>
           </div>
           <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100 text-gray-500"><X size={20} /></button>
         </div>
@@ -553,7 +640,7 @@ export default function Gestion() {
 
   // Calcula offsets acumulados para cada columna fija (en orden COLUMNS)
   useLayoutEffect(() => {
-    const pinned = COLUMNS.filter(c => pinnedCols.has(c.key) && vis(c.key));
+    const pinned = COLUMNS.filter(c => pinnedCols.has(c.key) && !hiddenCols.has(c.key));
     const offsets: Record<string, number> = {};
     let acc = 0;
     for (const col of pinned) {
@@ -612,7 +699,6 @@ export default function Gestion() {
       }
       if (ps) setPageSize(ps);
     } catch { /* sin vista guardada */ }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Celda de filtro por columna (para la fila de filtros)
@@ -711,14 +797,15 @@ export default function Gestion() {
     }
   };
 
-  const patchField = async (id: number, field: string, value: string) => {
+  const patchField = async (id: number, field: string, value: string, extra: Record<string, string | null> = {}) => {
     try {
+      const payload = { [field]: value || null, ...extra };
       const res = await fetch(`/api/facturas/${id}`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json', ...authHeader() },
-        body: JSON.stringify({ [field]: value || null }),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error((await res.json()).error);
-      setFacturas(prev => prev.map(f => f.id === id ? { ...f, [field]: value } : f));
+      setFacturas(prev => prev.map(f => f.id === id ? { ...f, [field]: value, ...extra } : f));
     } catch (e: any) { alert(`Error al guardar: ${e.message}`); }
   };
 
@@ -935,14 +1022,14 @@ export default function Gestion() {
               ⚠️ {error} — ¿El backend está corriendo en <code>localhost:3001</code>?
             </div>
           ) : (
-            <table className="min-w-full text-xs" style={{ borderCollapse: 'collapse' }}>
+            <table className="min-w-full text-sm" style={{ borderCollapse: 'collapse' }}>
               <thead style={{ position: 'sticky', top: 0, zIndex: 4 }}>
                 {/* Cabeceras estilo Excel */}
                 <tr style={{ background: '#e8394a' }}>
                   {COLUMNS.filter(c => vis(c.key)).map(c => (
                     <th key={c.key}
                       ref={pinnedCols.has(c.key) ? el => { if (el) thRefs.current.set(c.key, el); } : undefined}
-                      className="whitespace-nowrap font-bold text-white text-[11px] uppercase tracking-wide select-none"
+                      className="whitespace-nowrap font-bold text-white text-[12px] uppercase tracking-wide select-none"
                       style={{
                         padding: '7px 10px', border: '1px solid #c9303f', textAlign: 'left',
                         ...(pinnedCols.has(c.key) ? {
@@ -965,9 +1052,10 @@ export default function Gestion() {
                     {COLUMNS.filter(c => vis(c.key)).map(c => {
                       const cell = filterCellFor(c.key);
                       if (!pinnedCols.has(c.key)) return cell;
-                      return React.cloneElement(cell as React.ReactElement, {
+                      const cellElement = cell as ReactElement<{ style?: CSSProperties }>;
+                      return cloneElement(cellElement, {
                         style: {
-                          ...(cell as React.ReactElement).props.style,
+                          ...cellElement.props.style,
                           position: 'sticky',
                           left:     stickyLeft[c.key] ?? 0,
                           zIndex:   2,
@@ -1090,10 +1178,9 @@ export default function Gestion() {
                           const moneda = f.tipo_moneda || 'COP';
                           return (
                             <td style={stickyTdStyle('tipo_moneda', { border: '1px solid #e8e0e0', padding: '3px 5px' })}>
-                              <select
+                              <CurrencyPicker
                                 value={moneda}
-                                onChange={async e => {
-                                  const val = e.target.value;
+                                onChange={async val => {
                                   try {
                                     const res = await fetch(`/api/facturas/${f.id}`, {
                                       method: 'PATCH',
@@ -1104,31 +1191,48 @@ export default function Gestion() {
                                     setFacturas(prev => prev.map(r => r.id === f.id ? { ...r, tipo_moneda: val } : r));
                                   } catch (err: any) { alert(`Error: ${err.message}`); }
                                 }}
-                                className="text-[11px] text-gray-600 rounded px-1.5 py-1 border border-gray-200 bg-white outline-none focus:ring-1 focus:ring-gray-300 cursor-pointer"
-                                style={{ minWidth: 58 }}
-                              >
-                                {MONEDA_OPTIONS.map(o => (
-                                  <option key={o.code} value={o.code}>{o.label}</option>
-                                ))}
-                              </select>
+                                minWidth={70}
+                              />
                             </td>
                           );
                         })()}
 
                         {vis('ampliacion_observacion') && <EditCell value={f.ampliacion_observacion} type="textarea" minWidth={160} onSave={v => patchField(f.id, 'ampliacion_observacion', v)} stickyStyle={stickyTdStyle('ampliacion_observacion')} />}
                         {vis('motivo_demora')          && <EditCell value={f.motivo_demora}          type="textarea" minWidth={150} onSave={v => patchField(f.id, 'motivo_demora', v)} stickyStyle={stickyTdStyle('motivo_demora')} />}
-                        {vis('rechazado')              && <EditCell value={f.rechazado}              type="select" options={SI_NO} minWidth={80}  onSave={v => patchField(f.id, 'rechazado', v)} stickyStyle={stickyTdStyle('rechazado')} />}
-                        {vis('fecha_contabilizado')    && <EditCell value={f.fecha_contabilizado?.slice(0,10)}  type="date" minWidth={120} onSave={v => patchField(f.id, 'fecha_contabilizado', v)} stickyStyle={stickyTdStyle('fecha_contabilizado')} />}
-                        {vis('doc_contable')           && <EditCell value={f.doc_contable}           type="text"   minWidth={110} onSave={v => patchField(f.id, 'doc_contable', v)} stickyStyle={stickyTdStyle('doc_contable')} />}
-                        {vis('dias')                   && <EditCell value={f.dias}                   type="number" minWidth={70}  onSave={v => patchField(f.id, 'dias', v)} stickyStyle={stickyTdStyle('dias')} />}
-                        {vis('fecha_entrega_tesoreria')              && <EditCell value={f.fecha_entrega_tesoreria?.slice(0,10)}          type="date" minWidth={130} onSave={v => patchField(f.id, 'fecha_entrega_tesoreria', v)} stickyStyle={stickyTdStyle('fecha_entrega_tesoreria')} />}
-                        {vis('fecha_de_dev_a_recepcion')             && <EditCell value={f.fecha_de_dev_a_recepcion?.slice(0,10)}         type="date" minWidth={130} onSave={v => patchField(f.id, 'fecha_de_dev_a_recepcion', v)} stickyStyle={stickyTdStyle('fecha_de_dev_a_recepcion')} />}
-                        {vis('motivo_devolucion')                    && <EditCell value={f.motivo_devolucion}      type="textarea" minWidth={150} onSave={v => patchField(f.id, 'motivo_devolucion', v)} stickyStyle={stickyTdStyle('motivo_devolucion')} />}
-                        {vis('fecha_envio_rechazo_recepcion_al_cliente') && <EditCell value={f.fecha_envio_rechazo_recepcion_al_cliente?.slice(0,10)} type="date" minWidth={140} onSave={v => patchField(f.id, 'fecha_envio_rechazo_recepcion_al_cliente', v)} stickyStyle={stickyTdStyle('fecha_envio_rechazo_recepcion_al_cliente')} />}
-                        {vis('dias_rechazo_recepcion_vs_asignacion') && <EditCell value={f.dias_rechazo_recepcion_vs_asignacion} type="number" minWidth={90} onSave={v => patchField(f.id, 'dias_rechazo_recepcion_vs_asignacion', v)} stickyStyle={stickyTdStyle('dias_rechazo_recepcion_vs_asignacion')} />}
+                        {vis('fecha_contabilizado') && (() => {
+                          const disabled = Boolean(f.fecha_de_dev_a_recepcion);
+                          return disabled ? td('fecha_contabilizado', f.fecha_contabilizado?.slice(0,10) || '—', { color: '#777' }) : <EditCell value={f.fecha_contabilizado?.slice(0,10)} type="date" minWidth={120} onSave={v => patchField(f.id, 'fecha_contabilizado', v)} stickyStyle={stickyTdStyle('fecha_contabilizado')} />;
+                        })()}
+                        {vis('doc_contable') && (() => {
+                          const disabled = Boolean(f.fecha_de_dev_a_recepcion);
+                          return disabled ? td('doc_contable', f.doc_contable || '—', { color: '#777' }) : <EditCell value={f.doc_contable} type="text" minWidth={110} onSave={v => patchField(f.id, 'doc_contable', v)} stickyStyle={stickyTdStyle('doc_contable')} />;
+                        })()}
+                        {vis('dias')                   && td('dias', countBusinessDaysSince(f.fecha_emision) ?? '—', { minWidth: 70, textAlign: 'center', color: '#333' })}
+                        {vis('fecha_entrega_tesoreria') && (() => {
+                          const disabled = Boolean(f.fecha_de_dev_a_recepcion);
+                          return disabled ? td('fecha_entrega_tesoreria', f.fecha_entrega_tesoreria?.slice(0,10) || '—', { color: '#777' }) : <EditCell value={f.fecha_entrega_tesoreria?.slice(0,10)} type="date" minWidth={130} onSave={v => patchField(f.id, 'fecha_entrega_tesoreria', v, { estado: 'EN_REVISION' })} stickyStyle={stickyTdStyle('fecha_entrega_tesoreria')} />;
+                        })()}
+                        {vis('fecha_de_dev_a_recepcion') && (() => {
+                          const disabled = Boolean(f.fecha_entrega_tesoreria) || Boolean(f.fecha_de_dev_a_recepcion);
+                          return disabled ? td('fecha_de_dev_a_recepcion', f.fecha_de_dev_a_recepcion?.slice(0,10) || '—', { color: '#777' }) : <EditCell value={f.fecha_de_dev_a_recepcion?.slice(0,10)} type="date" minWidth={130} onSave={v => patchField(f.id, 'fecha_de_dev_a_recepcion', v, { aceptacion_o_rechazo: 'Rechazo', estado: 'RECHAZADA' })} stickyStyle={stickyTdStyle('fecha_de_dev_a_recepcion')} />;
+                        })()}
+                        {vis('motivo_devolucion') && (() => {
+                          const disabled = Boolean(f.fecha_entrega_tesoreria) || Boolean(f.fecha_de_dev_a_recepcion);
+                          return disabled ? td('motivo_devolucion', f.motivo_devolucion || '—', { color: '#777' }) : <EditCell value={f.motivo_devolucion}      type="textarea" minWidth={150} onSave={v => patchField(f.id, 'motivo_devolucion', v)} stickyStyle={stickyTdStyle('motivo_devolucion')} />;
+                        })()}
+                        {vis('fecha_envio_rechazo_recepcion_al_cliente') && (() => {
+                          const disabled = Boolean(f.fecha_entrega_tesoreria) || Boolean(f.fecha_de_dev_a_recepcion);
+                          return disabled ? td('fecha_envio_rechazo_recepcion_al_cliente', f.fecha_envio_rechazo_recepcion_al_cliente?.slice(0,10) || '—', { color: '#777' }) : <EditCell value={f.fecha_envio_rechazo_recepcion_al_cliente?.slice(0,10)} type="date" minWidth={140} onSave={v => patchField(f.id, 'fecha_envio_rechazo_recepcion_al_cliente', v)} stickyStyle={stickyTdStyle('fecha_envio_rechazo_recepcion_al_cliente')} />;
+                        })()}
                         {vis('acuse_recibido_dian')  && <EditCell value={f.acuse_recibido_dian}    type="select" options={SI_NO} minWidth={90}  onSave={v => patchField(f.id, 'acuse_recibido_dian', v)} stickyStyle={stickyTdStyle('acuse_recibido_dian')} />}
-                        {vis('recibo_de_mercancia')  && <EditCell value={f.recibo_de_mercancia}    type="select" options={SI_NO} minWidth={90}  onSave={v => patchField(f.id, 'recibo_de_mercancia', v)} stickyStyle={stickyTdStyle('recibo_de_mercancia')} />}
-                        {vis('aceptacion_o_rechazo') && <EditCell value={f.aceptacion_o_rechazo}   type="select" options={['','Aceptación','Rechazo']} minWidth={110} onSave={v => patchField(f.id, 'aceptacion_o_rechazo', v)} stickyStyle={stickyTdStyle('aceptacion_o_rechazo')} />}
+                        {vis('recibo_de_mercancia') && (() => {
+                          const disabled = Boolean(f.fecha_de_dev_a_recepcion);
+                          return disabled ? td('recibo_de_mercancia', f.recibo_de_mercancia || '—', { color: '#777' }) : <EditCell value={f.recibo_de_mercancia} type="select" options={SI_NO} minWidth={90}  onSave={v => patchField(f.id, 'recibo_de_mercancia', v)} stickyStyle={stickyTdStyle('recibo_de_mercancia')} />;
+                        })()}
+                        {vis('aceptacion_o_rechazo') && (() => {
+                          const acceptanceValue = f.fecha_de_dev_a_recepcion ? 'Rechazo' : f.aceptacion_o_rechazo;
+                          return f.fecha_de_dev_a_recepcion ? td('aceptacion_o_rechazo', acceptanceValue, { color: '#b91c1c', fontWeight: 700 }) : <EditCell value={f.aceptacion_o_rechazo} type="select" options={['','Aceptación','Rechazo']} minWidth={110} onSave={v => patchField(f.id, 'aceptacion_o_rechazo', v)} stickyStyle={stickyTdStyle('aceptacion_o_rechazo')} />;
+                        })()}
 
                         {vis('evidencia_aceptacion_url') && (
                           <EvidenciaCell
@@ -1145,13 +1249,22 @@ export default function Gestion() {
                         {vis('tiempo_promedio') && <EditCell value={f.tiempo_promedio} type="number" minWidth={90} onSave={v => patchField(f.id, 'tiempo_promedio', v)} stickyStyle={stickyTdStyle('tiempo_promedio')} />}
                         {vis('tiempo_real')     && <EditCell value={f.tiempo_real}     type="number" minWidth={90} onSave={v => patchField(f.id, 'tiempo_real', v)} stickyStyle={stickyTdStyle('tiempo_real')} />}
 
-                        {vis('estado') && (
-                          <td style={stickyTdStyle('estado', { border: '1px solid #e8e0e0', padding: '5px 8px' })}>
-                            <span className={cn('px-2 py-0.5 text-[10px] font-bold rounded border whitespace-nowrap', statusColors[f.estado])}>
-                              {statusLabels[f.estado] ?? f.estado}
-                            </span>
-                          </td>
-                        )}
+                        {vis('estado') && (() => {
+                          const isOnlyBasic = !f.fecha_contabilizado && !f.doc_contable && !f.fecha_de_dev_a_recepcion;
+                          // Priorizar el estado guardado en la base de datos para permitir cambios manuales.
+                          let displayEstado = f.estado && f.estado !== '' ? f.estado : null;
+                          if (!displayEstado) {
+                            if (f.fecha_envio_rechazo_recepcion_al_cliente || f.fecha_de_dev_a_recepcion) displayEstado = 'RECHAZADA';
+                            else displayEstado = isOnlyBasic ? 'PENDIENTE' : (f.estado || 'PENDIENTE');
+                          }
+                          return (
+                            <td style={stickyTdStyle('estado', { border: '1px solid #e8e0e0', padding: '5px 8px' })}>
+                              <span className={cn('px-2 py-0.5 text-[10px] font-bold rounded border whitespace-nowrap', statusColors[displayEstado])}>
+                                {statusLabels[displayEstado] ?? displayEstado}
+                              </span>
+                            </td>
+                          );
+                        })()}
 
                         {vis('acciones') && (
                           <td style={{ border: '1px solid #e8e0e0', padding: '4px 6px' }}>
