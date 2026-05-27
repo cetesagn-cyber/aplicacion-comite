@@ -32,48 +32,36 @@ async function setupUsersTable(pool) {
   console.log('✅ Tabla billee_users verificada');
 }
 
-// ── Seed: crear usuarios iniciales si no existen ─────────────────────────────
+// ── Seed: crear / actualizar usuarios ────────────────────────────────────────
 async function seedUsers(pool) {
   const users = [
-    {
-      email:     'admin@cetesa.com.co',
-      password:  'Cetesa.2037',
-      full_name: 'Administrador Bill-e',
-      role:      'admin',
-    },
-    {
-      email:     'gnino@cetesa.com.co',
-      password:  'Cetesa.2030',
-      full_name: 'G. Niño — Registro de Facturas',
-      role:      'operador',
-    },
-    {
-      email:     'jgalindo@cetesa.com.co',
-      password:  'Cetesa.2030',
-      full_name: 'J. Galindo',
-      role:      'operador',
-    },
-    {
-      email:     'recepcion@cetesa.com.co',
-      password:  'Cetesa.2030',
-      full_name: 'Recepcion CETESA',
-      role:      'operador',
-    },
+    { email: 'admin@cetesa.com.co',         password: 'Cetesa.2037', full_name: 'Administrador Bill-e',       role: 'admin',    update: false },
+    { email: 'gnino@cetesa.com.co',          password: 'Cetesa.2030', full_name: 'G. Niño — Registro de Facturas', role: 'operador', update: false },
+    { email: 'jgalindo@cetesa.com.co',       password: 'Cetesa.2027', full_name: 'J. Galindo',                 role: 'operador', update: true  },
+    { email: 'amalagon@cetesa.com.co',       password: 'Cetesa.2027', full_name: 'A. Malagón',                 role: 'operador', update: false },
+    { email: 'nmonterrosa@cetesa.com.co',    password: 'Cetesa.2027', full_name: 'N. Monterrosa',              role: 'operador', update: false },
+    { email: 'dgutierrez@cetesa.com.co',     password: 'Cetesa.2027', full_name: 'D. Gutiérrez',               role: 'operador', update: false },
+    { email: 'recepcion@cetesa.com.co',      password: 'Cetesa.2027', full_name: 'Recepción CETESA',           role: 'operador', update: true  },
+    { email: 'mforero@cetesa.com.co',        password: 'Cetesa.2027', full_name: 'M. Forero',                  role: 'admin',    update: false },
+    { email: 'adminbille@cetesa.com.co',     password: 'Cetesa.2027', full_name: 'Admin Bill-e',               role: 'admin',    update: false },
   ];
 
   for (const u of users) {
-    const existing = await pool.query(
-      'SELECT id FROM billee_users WHERE email = $1',
-      [u.email]
-    );
+    const existing = await pool.query('SELECT id FROM billee_users WHERE email = $1', [u.email]);
     if (existing.rows.length === 0) {
       const hash = await bcrypt.hash(u.password, 12);
       await pool.query(
-        `INSERT INTO billee_users (email, password_hash, full_name, role)
-         VALUES ($1, $2, $3, $4)`,
+        `INSERT INTO billee_users (email, password_hash, full_name, role) VALUES ($1, $2, $3, $4)`,
         [u.email, hash, u.full_name, u.role]
       );
       console.log(`✅ Usuario creado: ${u.email} (${u.role})`);
+    } else if (u.update) {
+      const hash = await bcrypt.hash(u.password, 12);
+      await pool.query(
+        `UPDATE billee_users SET password_hash = $1, role = $2 WHERE email = $3`,
+        [hash, u.role, u.email]
+      );
+      console.log(`🔄 Usuario actualizado: ${u.email}`);
     } else {
       console.log(`ℹ️  Usuario ya existe: ${u.email}`);
     }

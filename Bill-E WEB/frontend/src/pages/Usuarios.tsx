@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   UserPlus, Edit3, Trash2, X, Save, AlertTriangle,
-  Eye, EyeOff, RefreshCw, CheckCircle, XCircle,
+  Eye, EyeOff, RefreshCw, CheckCircle, XCircle, KeyRound, Lock,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -21,10 +21,107 @@ const ROLES: Record<string, { label: string; color: string }> = {
   visor:    { label: 'Visor',         color: 'bg-gray-100   text-gray-600   border-gray-200'   },
 };
 
+const PROTECTED_EMAIL = 'adminbille@cetesa.com.co';
+
 const authHeader = () => ({
   'Content-Type': 'application/json',
   Authorization: `Bearer ${localStorage.getItem('billee_token')}`,
 });
+
+// ── Modal Cambiar clave (admin → usuario) ─────────────────────────────────────
+function ChangePasswordModal({ usuario, onClose }: { usuario: UsuarioData; onClose: () => void }) {
+  const [pwd,     setPwd]     = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [showPwd, setShowPwd] = useState(false);
+  const [saving,  setSaving]  = useState(false);
+  const [error,   setError]   = useState('');
+  const [success, setSuccess] = useState(false);
+
+  const handleSave = async () => {
+    setError('');
+    if (!pwd) return setError('Ingresa la nueva clave');
+    if (pwd.length < 6) return setError('Mínimo 6 caracteres');
+    if (pwd !== confirm) return setError('Las claves no coinciden');
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/users/${usuario.id}`, {
+        method: 'PATCH', headers: authHeader(),
+        body: JSON.stringify({ password: pwd }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setSuccess(true);
+      setTimeout(onClose, 1600);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const inp = 'w-full text-sm border border-gray-200 rounded-xl px-3.5 py-2.5 focus:ring-2 focus:ring-red-200 focus:border-red-400 outline-none bg-gray-50 focus:bg-white transition-all';
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
+        <div className="flex items-center justify-between p-5 border-b border-gray-100">
+          <div className="flex items-center gap-2">
+            <KeyRound size={17} className="text-[#e8394a]" />
+            <div>
+              <h2 className="text-base font-bold text-gray-900">Cambiar clave</h2>
+              <p className="text-xs text-gray-400">{usuario.full_name}</p>
+            </div>
+          </div>
+          <button type="button" onClick={onClose} title="Cerrar" className="p-2 rounded-lg hover:bg-gray-100 text-gray-400"><X size={18} /></button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          {success ? (
+            <p className="text-center text-green-600 font-semibold py-4">✓ Clave actualizada correctamente</p>
+          ) : (
+            <>
+              {error && (
+                <div className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium"
+                     style={{ background: '#fff1f2', color: '#b21f2d', border: '1px solid #ffc7cc' }}>
+                  <AlertTriangle size={15} /> {error}
+                </div>
+              )}
+              <div>
+                <label htmlFor="adm-pwd" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Nueva clave</label>
+                <div className="relative">
+                  <input id="adm-pwd" className={cn(inp, 'pr-10')} type={showPwd ? 'text' : 'password'}
+                    value={pwd} onChange={e => setPwd(e.target.value)} placeholder="Mínimo 6 caracteres"
+                    autoComplete="new-password" />
+                  <button type="button" title={showPwd ? 'Ocultar' : 'Mostrar'} onClick={() => setShowPwd(v => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                    {showPwd ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label htmlFor="adm-pwd-confirm" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Confirmar clave</label>
+                <input id="adm-pwd-confirm" className={inp} type="password"
+                  value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="Repite la nueva clave"
+                  autoComplete="new-password" />
+              </div>
+              <div className="flex gap-3 pt-1">
+                <button type="button" onClick={onClose}
+                  className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50">
+                  Cancelar
+                </button>
+                <button type="button" onClick={handleSave} disabled={saving}
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold text-white shadow-sm disabled:opacity-60"
+                  style={{ background: 'linear-gradient(135deg,#e8394a,#b21f2d)' }}>
+                  <Save size={14} />{saving ? 'Guardando…' : 'Guardar'}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ── Modal Crear / Editar ─────────────────────────────────────────────────────
 function UserModal({
@@ -177,6 +274,7 @@ export default function Usuarios() {
   const [deleting,  setDeleting]  = useState<UsuarioData | null>(null);
 
   const meId = JSON.parse(localStorage.getItem('billee_user') || '{}').id;
+  const [changePwdUser, setChangePwdUser] = useState<UsuarioData | null>(null);
 
   const fetchUsuarios = useCallback(async () => {
     setLoading(true);
@@ -209,6 +307,7 @@ export default function Usuarios() {
         />
       )}
       {deleting && <DeleteModal usuario={deleting} onConfirm={handleDelete} onClose={() => setDeleting(null)} />}
+      {changePwdUser && <ChangePasswordModal usuario={changePwdUser} onClose={() => setChangePwdUser(null)} />}
 
       {/* Header */}
       <div className="flex justify-between items-end">
@@ -284,6 +383,17 @@ export default function Usuarios() {
                         className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
                         <Edit3 size={16} />
                       </button>
+                      {u.email === PROTECTED_EMAIL ? (
+                        <span title="Clave protegida — no modificable"
+                          className="p-1.5 rounded-lg text-gray-200 cursor-not-allowed">
+                          <Lock size={16} />
+                        </span>
+                      ) : (
+                        <button type="button" onClick={() => setChangePwdUser(u)} title="Cambiar clave"
+                          className="p-1.5 rounded-lg text-gray-400 hover:text-yellow-600 hover:bg-yellow-50 transition-colors">
+                          <KeyRound size={16} />
+                        </button>
+                      )}
                       <button onClick={() => u.id !== meId && setDeleting(u)} title="Eliminar"
                         className={cn('p-1.5 rounded-lg transition-colors',
                           u.id === meId ? 'text-gray-200 cursor-not-allowed' : 'text-gray-400 hover:text-red-600 hover:bg-red-50')}>

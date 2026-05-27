@@ -112,6 +112,7 @@ async function setupFilesTable(pool) {
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_fa_factura ON facturas_archivos(factura_id)`);
   // Migraciones: agregar columnas si no existen
   await pool.query(`ALTER TABLE facturas_procesadas ADD COLUMN IF NOT EXISTS entregado VARCHAR(100)`);
+  await pool.query(`ALTER TABLE facturas_procesadas ADD COLUMN IF NOT EXISTS radicado_x VARCHAR(100)`);
   await pool.query(`ALTER TABLE facturas_procesadas ADD COLUMN IF NOT EXISTS area VARCHAR(100)`);
   await pool.query(`ALTER TABLE facturas_procesadas ADD COLUMN IF NOT EXISTS contabilizado_por VARCHAR(100)`);
   // Nuevas columnas operativas
@@ -137,6 +138,20 @@ async function setupFilesTable(pool) {
   await pool.query(`ALTER TABLE facturas_procesadas ADD COLUMN IF NOT EXISTS alerta_radicado VARCHAR(20)`);
   await pool.query(`ALTER TABLE facturas_procesadas ADD COLUMN IF NOT EXISTS tipo_moneda VARCHAR(10) DEFAULT 'COP'`);
   await pool.query(`UPDATE facturas_procesadas SET tipo_moneda = 'COP' WHERE tipo_moneda IS NULL`);
+  // Migración: convertir fecha_entrega_tesoreria de DATE a VARCHAR para admitir texto libre
+  await pool.query(`
+    DO $$ BEGIN
+      IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'facturas_procesadas'
+          AND column_name = 'fecha_entrega_tesoreria'
+          AND data_type = 'date'
+      ) THEN
+        ALTER TABLE facturas_procesadas
+          ALTER COLUMN fecha_entrega_tesoreria TYPE VARCHAR(200) USING fecha_entrega_tesoreria::TEXT;
+      END IF;
+    END $$;
+  `);
   console.log('✅ Tabla facturas_archivos verificada');
   console.log('✅ Todas las columnas operativas verificadas');
 }
@@ -267,6 +282,35 @@ app.get('/api/auth/me', requireAuth, (req, res) => {
   res.json({ user: req.user });
 });
 
+// ── POST /api/auth/change-password ───────────────────────────────────────────
+app.post('/api/auth/change-password', requireAuth, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword)
+      return res.status(400).json({ error: 'Clave actual y nueva clave son requeridas' });
+    if (newPassword.length < 6)
+      return res.status(400).json({ error: 'La nueva clave debe tener al menos 6 caracteres' });
+
+    const { rows } = await pool.query(
+      'SELECT password_hash FROM billee_users WHERE id = $1 AND is_active = TRUE',
+      [req.user.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+    const ok = await bcrypt.compare(currentPassword, rows[0].password_hash);
+    if (!ok) return res.status(401).json({ error: 'La clave actual es incorrecta' });
+
+    const newHash = await bcrypt.hash(newPassword, 12);
+    await pool.query(
+      'UPDATE billee_users SET password_hash = $1, updated_at = NOW() WHERE id = $2',
+      [newHash, req.user.id]
+    );
+    res.json({ message: 'Clave actualizada correctamente' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const ESTADOS_VALIDOS = ['PENDIENTE', 'EN_REVISION', 'PROCESADA', 'RECHAZADA'];
 
@@ -283,6 +327,10 @@ app.get('/api/facturas', async (req, res) => {
       col_numero_factura = '', col_nombre_proveedor = '', col_nit_proveedor = '',
       col_tipo_archivo = '', col_fecha_desde = '', col_fecha_hasta = '',
       col_valor_min = '', col_valor_max = '',
+      col_area = '', col_entregado = '', col_radicado_x = '',
+      col_contabilizado_por = '', col_motivo_demora = '', col_alerta_radicado = '',
+      col_forma_de_pago = '', col_orden_compra = '', col_doc_contable = '',
+      col_motivo_devolucion = '',
     } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
@@ -344,6 +392,46 @@ app.get('/api/facturas', async (req, res) => {
       params.push(parseFloat(col_valor_max));
       idx++;
     }
+    if (col_area) {
+      conditions.push(`area = $${idx}`);
+      params.push(col_area); idx++;
+    }
+    if (col_entregado) {
+      conditions.push(`entregado = $${idx}`);
+      params.push(col_entregado); idx++;
+    }
+    if (col_radicado_x) {
+      conditions.push(`radicado_x = $${idx}`);
+      params.push(col_radicado_x); idx++;
+    }
+    if (col_contabilizado_por) {
+      conditions.push(`contabilizado_por = $${idx}`);
+      params.push(col_contabilizado_por); idx++;
+    }
+    if (col_motivo_demora) {
+      conditions.push(`motivo_demora = $${idx}`);
+      params.push(col_motivo_demora); idx++;
+    }
+    if (col_alerta_radicado) {
+      conditions.push(`alerta_radicado = $${idx}`);
+      params.push(col_alerta_radicado); idx++;
+    }
+    if (col_forma_de_pago) {
+      conditions.push(`forma_de_pago = $${idx}`);
+      params.push(col_forma_de_pago); idx++;
+    }
+    if (col_orden_compra) {
+      conditions.push(`orden_compra ILIKE $${idx}`);
+      params.push(`%${col_orden_compra}%`); idx++;
+    }
+    if (col_doc_contable) {
+      conditions.push(`doc_contable ILIKE $${idx}`);
+      params.push(`%${col_doc_contable}%`); idx++;
+    }
+    if (col_motivo_devolucion) {
+      conditions.push(`motivo_devolucion = $${idx}`);
+      params.push(col_motivo_devolucion); idx++;
+    }
 
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
@@ -371,7 +459,7 @@ app.get('/api/facturas', async (req, res) => {
          evidencia_aceptacion_url,
          descripcion_items, tipo_archivo, es_proforma,
          orden_compra, entrada_servicio,
-         estado, observaciones, entregado, area, contabilizado_por,
+         estado, observaciones, entregado, radicado_x, area, contabilizado_por,
          fecha_registro, created_at
        FROM facturas_procesadas
        ${where}
@@ -736,12 +824,21 @@ app.post('/api/users', requireAuth, requireAdmin, async (req, res) => {
   }
 });
 
+const PROTECTED_EMAIL = 'adminbille@cetesa.com.co';
+
 // PATCH /api/users/:id
 app.patch('/api/users/:id', requireAuth, requireAdmin, async (req, res) => {
   try {
     const { full_name, role, is_active, password } = req.body;
     const ROLES = ['admin', 'operador', 'auditor', 'visor'];
     if (role && !ROLES.includes(role)) return res.status(400).json({ error: 'Rol inválido' });
+
+    // Proteger al admin del sistema — no se puede cambiar su clave
+    if (password) {
+      const target = await pool.query('SELECT email FROM billee_users WHERE id = $1', [req.params.id]);
+      if (target.rows[0]?.email === PROTECTED_EMAIL)
+        return res.status(403).json({ error: 'No se puede modificar la clave de este usuario' });
+    }
 
     const sets = []; const vals = [];
     if (full_name  !== undefined) { sets.push(`full_name = $${vals.length+1}`);      vals.push(full_name); }

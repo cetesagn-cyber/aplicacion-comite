@@ -37,6 +37,14 @@ function countBusinessDaysSince(fechaRadicado: string): number | null {
   return count;
 }
 
+function computeAlerta(fechaRadicado: string): string {
+  const days = countBusinessDaysSince(fechaRadicado);
+  if (days === null) return '';
+  if (days <= 3) return 'A tiempo';
+  if (days <= 6) return 'Demorado';
+  return 'Vencido';
+}
+
 // ── Tipos ────────────────────────────────────────────────────────────────────
 interface Factura {
   id: number;
@@ -80,6 +88,7 @@ interface Factura {
   orden_compra: string;
   entrada_servicio: string;
   entregado: string;
+  radicado_x: string;
   contabilizado_por: string;
   area: string;
   fecha_registro: string;
@@ -100,11 +109,39 @@ const MONEDA_OPTIONS = [
 ];
 
 
-const ENTREGADO_OPTIONS = ['', 'Alexander', 'Juan David', 'Neida'];
+const ENTREGADO_OPTIONS = ['', 'Alexander', 'Diana', 'Juan David', 'Neida', 'Recepcion', 'Yibley'];
+const CONTABILIZADO_POR_OPTIONS = ['', 'Alexander', 'Asignado pero no causa', 'Devuelta', 'Diana', 'Juan David', 'Neida', 'Yibley'];
+const MOTIVO_DEMORA_OPTIONS = [
+  '',
+  'Correo caja menor',
+  'Diferencia en valores',
+  'Faltan soportes',
+  'No hay OC',
+  'Pendiente confirmacion',
+  'Pendiente entrada',
+  'Tiempo revision contabilidad',
+];
+const MOTIVO_DEVOLUCION_OPTIONS = [
+  '',
+  'Cuenta contable erronea',
+  'Diferencia en valores',
+  'Documento que afecta fue rechazado anteriormente',
+  'Duplicado',
+  'Fuera de fecha',
+  'No coincide el NIT vs orden de compra',
+  'No hay entrada',
+  'Proveedor factura erroneamente imptos',
+  'Sin autorizacion del area financiera',
+  'Sin documentos soportes',
+  'Sin orden de compra',
+  'Sin requisitos de facturacion electronica',
+];
 const AREA_OPTIONS = [
-  '', 'Administrativo', 'Calidad', 'Comercial', 'Distribución',
-  'Financiera', 'Mantenimiento', 'Materia Prima', 'Minas', 'Mortero',
-  'Producción', 'Sistemas', 'Transporte Materia Prima', 'TTHH',
+  '', 'ADMINISTRATIVO', 'CALIDAD', 'COMERCIAL', 'COMPRAS', 'CONTABILIDAD',
+  'DISTRIBUCION', 'FINANCIERA', 'GESTION AMBIENTAL', 'GESTION SOCIAL',
+  'IMPORTACION', 'JURIDICA', 'MANTENIMIENTO', 'MATERIA PRIMA', 'MINAS',
+  'MORTEROS', 'PRESIDENCIA', 'PRODUCCION', 'RECEPCION FUERA DE FECHA',
+  'SISO', 'SISTEMAS', 'TRANSP MATERIA PRIMA', 'TTHH', 'PARADA MAYOR',
 ];
 const fmtConsecutivo = (n: number) => `BEL${String(n).padStart(6, '0')}`;
 
@@ -117,18 +154,32 @@ interface ColFilters {
   col_fecha_hasta: string;
   col_valor_min: string;
   col_valor_max: string;
+  col_area: string;
+  col_entregado: string;
+  col_radicado_x: string;
+  col_contabilizado_por: string;
+  col_motivo_demora: string;
+  col_alerta_radicado: string;
+  col_forma_de_pago: string;
+  col_orden_compra: string;
+  col_doc_contable: string;
+  col_motivo_devolucion: string;
 }
 
 const EMPTY_COL: ColFilters = {
   col_numero_factura: '', col_nombre_proveedor: '', col_nit_proveedor: '',
   col_tipo_archivo: '', col_fecha_desde: '', col_fecha_hasta: '',
   col_valor_min: '', col_valor_max: '',
+  col_area: '', col_entregado: '', col_radicado_x: '', col_contabilizado_por: '',
+  col_motivo_demora: '', col_alerta_radicado: '', col_forma_de_pago: '',
+  col_orden_compra: '', col_doc_contable: '', col_motivo_devolucion: '',
 };
 
 const COLUMNS: { key: string; label: string }[] = [
   { key: 'consecutivo',     label: 'Consecutivo' },
   { key: 'area',            label: 'Área' },
-  { key: 'entregado',       label: 'Entregado' },
+  { key: 'radicado_x',      label: 'Radicado X' },
+  { key: 'entregado',       label: 'Responsable de cont' },
   { key: 'fecha_emision',    label: 'F. Radicado' },
   { key: 'alerta_radicado', label: 'F. Alerta' },
   { key: 'nit_proveedor',   label: 'NIT' },
@@ -140,21 +191,18 @@ const COLUMNS: { key: string; label: string }[] = [
   { key: 'tipo_moneda',     label: 'Moneda' },
   { key: 'ampliacion_observacion', label: 'Ampliación Obs.' },
   { key: 'motivo_demora',   label: 'Motivo Demora' },
-  { key: 'fecha_contabilizado', label: 'Fecha Contabilizado' },
+  { key: 'fecha_contabilizado', label: 'Fecha Tramitado' },
   { key: 'doc_contable',    label: 'Doc. Contable' },
   { key: 'dias',            label: 'Días' },
   { key: 'fecha_entrega_tesoreria',      label: 'Fecha Entrega Tesorería' },
   { key: 'fecha_de_dev_a_recepcion',     label: 'Fecha Dev. Recepción' },
   { key: 'motivo_devolucion',            label: 'Motivo Devolución' },
   { key: 'fecha_envio_rechazo_recepcion_al_cliente', label: 'Fecha Envío Rechazo' },
-  { key: 'acuse_recibido_dian',  label: 'Acuse Recibido DIAN' },
+  { key: 'forma_de_pago',   label: 'Plazo de Pago' },
+  { key: 'acuse_recibido_dian',  label: 'Acuse' },
   { key: 'recibo_de_mercancia',  label: 'Recibo Mercancía' },
-  { key: 'aceptacion_o_rechazo', label: 'Aceptación/Rechazo' },
   { key: 'evidencia_aceptacion_url', label: 'Evidencia Acept./Rechazo' },
   { key: 'cufe',            label: 'CUFE' },
-  { key: 'forma_de_pago',   label: 'Forma de Pago' },
-  { key: 'tipo_de_factura', label: 'Tipo de Factura' },
-  { key: 'tiempo_promedio', label: 'Tiempo Promedio' },
   { key: 'tiempo_real',     label: 'Tiempo Real' },
   { key: 'estado',          label: 'Estado' },
   { key: 'acciones',        label: 'Acciones' },
@@ -183,7 +231,6 @@ const fmt = (v: string | number | null) =>
 
 const INP = 'w-full text-xs border border-gray-300 rounded px-2 py-1 focus:ring-1 focus:ring-red-200 focus:border-red-300 outline-none bg-white placeholder-gray-400';
 
-const SI_NO = ['', 'SI', 'NO'];
 
 function CurrencyPicker({ value, onChange, minWidth = 110 }: { value: string; onChange: (value: string) => void; minWidth?: number }) {
   const [open, setOpen] = useState(false);
@@ -587,6 +634,7 @@ export default function Gestion() {
   const [editingFactura,  setEditingFactura]  = useState<Factura | null>(null);
   const [viewingFactura,  setViewingFactura]  = useState<Factura | null>(null);
   const [deletingFactura, setDeletingFactura] = useState<Factura | null>(null);
+  const [selectedRowId,   setSelectedRowId]   = useState<number | null>(null);
 
   // ── Filtros de columna ─────────────────────────────────────────────────────
   const [showColFilters, setShowColFilters] = useState(false);
@@ -639,7 +687,7 @@ export default function Gestion() {
   });
 
   // Calcula offsets acumulados para cada columna fija (en orden COLUMNS)
-  useLayoutEffect(() => {
+  const recalcSticky = useCallback(() => {
     const pinned = COLUMNS.filter(c => pinnedCols.has(c.key) && !hiddenCols.has(c.key));
     const offsets: Record<string, number> = {};
     let acc = 0;
@@ -649,7 +697,16 @@ export default function Gestion() {
       if (th) acc += th.offsetWidth;
     }
     setStickyLeft(offsets);
-  }, [pinnedCols, hiddenCols, facturas.length]);
+  }, [pinnedCols, hiddenCols]);
+
+  useLayoutEffect(() => {
+    recalcSticky();
+  }, [recalcSticky, facturas.length]);
+
+  useEffect(() => {
+    window.addEventListener('resize', recalcSticky);
+    return () => window.removeEventListener('resize', recalcSticky);
+  }, [recalcSticky]);
 
   // Columna fija más a la derecha → recibe sombra separadora
   const pinnedVisible  = COLUMNS.filter(c => pinnedCols.has(c.key) && vis(c.key));
@@ -687,6 +744,17 @@ export default function Gestion() {
     setTimeout(() => setSavedMsg(false), 2000);
   };
 
+  const showAllCols = () => {
+    setHiddenCols(new Set());
+    try {
+      const raw = localStorage.getItem(getViewKey());
+      if (raw) {
+        const saved = JSON.parse(raw);
+        localStorage.setItem(getViewKey(), JSON.stringify({ ...saved, hiddenCols: [] }));
+      }
+    } catch { /* sin vista guardada */ }
+  };
+
   // Carga la vista al montar
   useEffect(() => {
     try {
@@ -704,39 +772,50 @@ export default function Gestion() {
   // Celda de filtro por columna (para la fila de filtros)
   const filterCellFor = (key: string) => {
     const s: React.CSSProperties = { border: '1px solid #f0d0d3', padding: '4px 6px' };
+    const sel = (colKey: keyof ColFilters, opts: string[]) => (
+      <td key={key} style={s}>
+        <select value={colFilters[colKey]} onChange={e => { setCol(colKey, e.target.value); setPage(1); }}
+          className={INP} style={{ minWidth: 100 }}>
+          {opts.map(o => <option key={o} value={o}>{o || '— Todos —'}</option>)}
+        </select>
+      </td>
+    );
+    const txt = (colKey: keyof ColFilters) => (
+      <td key={key} style={s}>
+        <input type="text" value={colFilters[colKey]} onChange={e => { setCol(colKey, e.target.value); setPage(1); }}
+          placeholder="Filtrar…" className={INP} />
+      </td>
+    );
     switch (key) {
       case 'fecha_emision': return (
         <td key={key} style={s}>
           <div className="flex flex-col gap-1">
-            <input type="date" value={colFilters.col_fecha_desde} onChange={e => setCol('col_fecha_desde', e.target.value)} title="Desde" className={INP} />
-            <input type="date" value={colFilters.col_fecha_hasta} onChange={e => setCol('col_fecha_hasta', e.target.value)} title="Hasta" className={INP} />
+            <input type="date" value={colFilters.col_fecha_desde} onChange={e => { setCol('col_fecha_desde', e.target.value); setPage(1); }} title="Desde" className={INP} />
+            <input type="date" value={colFilters.col_fecha_hasta} onChange={e => { setCol('col_fecha_hasta', e.target.value); setPage(1); }} title="Hasta" className={INP} />
           </div>
         </td>
       );
-      case 'nit_proveedor': return (
-        <td key={key} style={s}>
-          <input type="text" value={colFilters.col_nit_proveedor} onChange={e => setCol('col_nit_proveedor', e.target.value)} placeholder="Filtrar…" className={INP} />
-        </td>
-      );
-      case 'nombre_proveedor': return (
-        <td key={key} style={s}>
-          <input type="text" value={colFilters.col_nombre_proveedor} onChange={e => setCol('col_nombre_proveedor', e.target.value)} placeholder="Filtrar…" className={INP} />
-        </td>
-      );
-      case 'numero_factura': return (
-        <td key={key} style={s}>
-          <input type="text" value={colFilters.col_numero_factura} onChange={e => setCol('col_numero_factura', e.target.value)} placeholder="Filtrar…" className={INP} />
-        </td>
-      );
+      case 'nit_proveedor':    return txt('col_nit_proveedor');
+      case 'nombre_proveedor': return txt('col_nombre_proveedor');
+      case 'numero_factura':   return txt('col_numero_factura');
+      case 'orden_compra':     return txt('col_orden_compra');
+      case 'doc_contable':     return txt('col_doc_contable');
       case 'valor_total': return (
         <td key={key} style={s}>
           <div className="flex flex-col gap-1">
-            <input type="number" value={colFilters.col_valor_min} onChange={e => setCol('col_valor_min', e.target.value)} placeholder="Mín" className={INP} />
-            <input type="number" value={colFilters.col_valor_max} onChange={e => setCol('col_valor_max', e.target.value)} placeholder="Máx" className={INP} />
+            <input type="number" value={colFilters.col_valor_min} onChange={e => { setCol('col_valor_min', e.target.value); setPage(1); }} placeholder="Mín" className={INP} />
+            <input type="number" value={colFilters.col_valor_max} onChange={e => { setCol('col_valor_max', e.target.value); setPage(1); }} placeholder="Máx" className={INP} />
           </div>
         </td>
       );
-      case 'alerta_radicado': return <td key={key} style={s} />;
+      case 'area':             return sel('col_area',             ['', ...AREA_OPTIONS.filter(Boolean)]);
+      case 'entregado':        return sel('col_entregado',        ENTREGADO_OPTIONS);
+      case 'radicado_x':       return sel('col_radicado_x',       ENTREGADO_OPTIONS);
+      case 'contabilizado_por':return sel('col_contabilizado_por',CONTABILIZADO_POR_OPTIONS);
+      case 'motivo_demora':    return sel('col_motivo_demora',    MOTIVO_DEMORA_OPTIONS);
+      case 'motivo_devolucion':return sel('col_motivo_devolucion',MOTIVO_DEVOLUCION_OPTIONS);
+      case 'alerta_radicado':  return sel('col_alerta_radicado',  ['', 'A tiempo', 'Demorado', 'Vencido']);
+      case 'forma_de_pago':    return sel('col_forma_de_pago',    ['', 'Crédito', 'Contado']);
       case 'estado': return (
         <td key={key} style={s}><span className="text-[10px] text-gray-400 italic">↑ arriba</span></td>
       );
@@ -756,9 +835,28 @@ export default function Gestion() {
       const res  = await fetch(`/api/facturas?${params}`);
       if (!res.ok) throw new Error(`Error ${res.status}`);
       const json = await res.json();
-      setFacturas(json.data);
+      const data: Factura[] = json.data;
+
+      // Calcular y aplicar alerta en tiempo real
+      const patched = data.map(f => {
+        if (!f.fecha_emision) return f;
+        const computed = computeAlerta(f.fecha_emision);
+        return computed ? { ...f, alerta_radicado: computed } : f;
+      });
+      setFacturas(patched);
       setTotal(json.total);
       setTotalPages(json.totalPages);
+
+      // Persistir en BD los registros con valor desactualizado (fire and forget)
+      patched.forEach(f => {
+        if (f.alerta_radicado && f.alerta_radicado !== data.find(d => d.id === f.id)?.alerta_radicado) {
+          fetch(`/api/facturas/${f.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', ...authHeader() },
+            body: JSON.stringify({ alerta_radicado: f.alerta_radicado }),
+          }).catch(() => {});
+        }
+      });
     } catch (e: any) {
       setError(e.message || 'Error al cargar facturas');
     } finally {
@@ -818,6 +916,20 @@ export default function Gestion() {
       });
       if (!res.ok) throw new Error((await res.json()).error);
       setFacturas(prev => prev.map(f => f.id === id ? { ...f, entregado: value } : f));
+    } catch (e: any) {
+      alert(`Error al guardar: ${e.message}`);
+    }
+  };
+
+  const handleRadicadoXChange = async (id: number, value: string) => {
+    try {
+      const res = await fetch(`/api/facturas/${id}`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json', ...authHeader() },
+        body:    JSON.stringify({ radicado_x: value || null }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      setFacturas(prev => prev.map(f => f.id === id ? { ...f, radicado_x: value } : f));
     } catch (e: any) {
       alert(`Error al guardar: ${e.message}`);
     }
@@ -942,7 +1054,7 @@ export default function Gestion() {
               <div className="absolute top-full mt-1 right-0 z-30 bg-white border border-gray-200 rounded-xl shadow-xl p-3 w-72">
                 <div className="flex items-center justify-between mb-1 pb-2 border-b border-gray-100">
                   <span className="text-xs font-bold text-gray-600">Columnas visibles</span>
-                  <button onClick={() => setHiddenCols(new Set())}
+                  <button onClick={showAllCols}
                     className="text-[11px] text-[#e8394a] hover:underline font-semibold">
                     Mostrar todas
                   </button>
@@ -1028,7 +1140,7 @@ export default function Gestion() {
                 <tr style={{ background: '#e8394a' }}>
                   {COLUMNS.filter(c => vis(c.key)).map(c => (
                     <th key={c.key}
-                      ref={pinnedCols.has(c.key) ? el => { if (el) thRefs.current.set(c.key, el); } : undefined}
+                      ref={el => { if (el && pinnedCols.has(c.key)) thRefs.current.set(c.key, el); else thRefs.current.delete(c.key); }}
                       className="whitespace-nowrap font-bold text-white text-[12px] uppercase tracking-wide select-none"
                       style={{
                         padding: '7px 10px', border: '1px solid #c9303f', textAlign: 'left',
@@ -1087,14 +1199,17 @@ export default function Gestion() {
                   </tr>
                 ) : (
                   facturas.map((f, idx) => {
-                    const bg0 = idx % 2 === 0 ? '#ffffff' : '#fdf6f6';
+                    const isSelected = selectedRowId === f.id;
+                    const bg0 = isSelected ? '#fef9c3' : idx % 2 === 0 ? '#ffffff' : '#fdf6f6';
                     const td  = (key: string, content: React.ReactNode, extra?: React.CSSProperties) => (
                       <td style={stickyTdStyle(key, { border: '1px solid #e8e0e0', padding: '5px 8px', whiteSpace: 'nowrap', ...extra })}>{content}</td>
                     );
                     return (
-                      <tr key={f.id} style={{ background: bg0, cursor: 'default' }}
-                        onMouseEnter={e => (e.currentTarget.style.background = '#fde8ea')}
-                        onMouseLeave={e => (e.currentTarget.style.background = bg0)}>
+                      <tr key={f.id}
+                        onClick={() => setSelectedRowId(prev => prev === f.id ? null : f.id)}
+                        style={{ background: bg0, cursor: 'pointer', boxShadow: isSelected ? 'inset 3px 0 0 #f59e0b' : 'none' }}
+                        onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = '#fde8ea'; }}
+                        onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = bg0; }}>
 
                         {vis('consecutivo') && (
                           <td style={stickyTdStyle('consecutivo', { border: '1px solid #e8e0e0', padding: '5px 8px', whiteSpace: 'nowrap', color: '#888', fontFamily: 'monospace' })}>
@@ -1108,6 +1223,17 @@ export default function Gestion() {
                               className="text-xs border border-gray-300 rounded px-1.5 py-1 bg-white focus:ring-1 focus:ring-red-300 outline-none"
                               style={{ minWidth: 130 }}>
                               {AREA_OPTIONS.map(o => <option key={o} value={o}>{o || '— Sin asignar —'}</option>)}
+                            </select>
+                          </td>
+                        )}
+
+                        {vis('radicado_x') && (
+                          <td style={stickyTdStyle('radicado_x', { border: '1px solid #e8e0e0', padding: '3px 5px' })}>
+                            <select value={f.radicado_x || ''} onChange={e => handleRadicadoXChange(f.id, e.target.value)}
+                              title="Radicado X"
+                              className="text-xs border border-gray-300 rounded px-1.5 py-1 bg-white focus:ring-1 focus:ring-red-300 outline-none"
+                              style={{ minWidth: 110 }}>
+                              {ENTREGADO_OPTIONS.map(o => <option key={o} value={o}>{o || '— Sin asignar —'}</option>)}
                             </select>
                           </td>
                         )}
@@ -1126,30 +1252,18 @@ export default function Gestion() {
 
                         {vis('alerta_radicado') && (
                           <td style={stickyTdStyle('alerta_radicado', { border: '1px solid #e8e0e0', padding: '5px 8px', textAlign: 'center' })}>
-                            {f.alerta_radicado ? (
-                              <span style={{
-                                display: 'inline-block',
-                                padding: '2px 10px',
-                                borderRadius: 4,
-                                fontSize: 10,
-                                fontWeight: 700,
-                                whiteSpace: 'nowrap',
-                                background:
-                                  f.alerta_radicado === 'A tiempo' ? '#dcfce7' :
-                                  f.alerta_radicado === 'Demorado' ? '#ffedd5' : '#fee2e2',
-                                color:
-                                  f.alerta_radicado === 'A tiempo' ? '#166534' :
-                                  f.alerta_radicado === 'Demorado' ? '#9a3412' : '#991b1b',
-                                border: `1px solid ${
-                                  f.alerta_radicado === 'A tiempo' ? '#86efac' :
-                                  f.alerta_radicado === 'Demorado' ? '#fdba74' : '#fca5a5'
-                                }`,
-                              }}>
-                                {f.alerta_radicado}
-                              </span>
-                            ) : (
-                              <span style={{ color: '#ccc', fontSize: 10 }}>—</span>
-                            )}
+                            {(() => {
+                              const alerta = f.fecha_emision ? computeAlerta(f.fecha_emision) : '';
+                              if (!alerta) return <span style={{ color: '#ccc', fontSize: 10 }}>—</span>;
+                              const bg    = alerta === 'A tiempo' ? '#dcfce7' : alerta === 'Demorado' ? '#ffedd5' : '#fee2e2';
+                              const color = alerta === 'A tiempo' ? '#166534' : alerta === 'Demorado' ? '#9a3412' : '#991b1b';
+                              const border = alerta === 'A tiempo' ? '#86efac' : alerta === 'Demorado' ? '#fdba74' : '#fca5a5';
+                              return (
+                                <span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: 4, fontSize: 10, fontWeight: 700, whiteSpace: 'nowrap', background: bg, color, border: `1px solid ${border}` }}>
+                                  {alerta}
+                                </span>
+                              );
+                            })()}
                           </td>
                         )}
 
@@ -1160,14 +1274,14 @@ export default function Gestion() {
                           </td>
                         )}
                         {vis('numero_factura')   && td('numero_factura', f.numero_factura, { fontWeight: 600 })}
-                        {vis('orden_compra')     && td('orden_compra', f.orden_compra || '—', { fontFamily: 'monospace', color: '#555' })}
+                        {vis('orden_compra')     && <EditCell value={f.orden_compra} type="text" minWidth={110} onSave={v => patchField(f.id, 'orden_compra', v)} stickyStyle={stickyTdStyle('orden_compra')} />}
 
                         {vis('contabilizado_por') && (
                           <td style={stickyTdStyle('contabilizado_por', { border: '1px solid #e8e0e0', padding: '3px 5px' })}>
                             <select value={f.contabilizado_por || ''} onChange={e => handleContabilizadoPorChange(f.id, e.target.value)}
                               className="text-xs border border-gray-300 rounded px-1.5 py-1 bg-white focus:ring-1 focus:ring-red-300 outline-none"
                               style={{ minWidth: 110 }}>
-                              {ENTREGADO_OPTIONS.map(o => <option key={o} value={o}>{o || '— Sin asignar —'}</option>)}
+                              {CONTABILIZADO_POR_OPTIONS.map(o => <option key={o} value={o}>{o || '— Sin asignar —'}</option>)}
                             </select>
                           </td>
                         )}
@@ -1198,7 +1312,13 @@ export default function Gestion() {
                         })()}
 
                         {vis('ampliacion_observacion') && <EditCell value={f.ampliacion_observacion} type="textarea" minWidth={160} onSave={v => patchField(f.id, 'ampliacion_observacion', v)} stickyStyle={stickyTdStyle('ampliacion_observacion')} />}
-                        {vis('motivo_demora')          && <EditCell value={f.motivo_demora}          type="textarea" minWidth={150} onSave={v => patchField(f.id, 'motivo_demora', v)} stickyStyle={stickyTdStyle('motivo_demora')} />}
+                        {vis('motivo_demora') && (() => {
+                          const dias = countBusinessDaysSince(f.fecha_emision);
+                          const bloqueado = dias === null || dias <= 3;
+                          return bloqueado
+                            ? td('motivo_demora', f.motivo_demora || '—', { color: '#bbb', fontStyle: 'italic', fontSize: 11, minWidth: 180 })
+                            : <EditCell value={f.motivo_demora} type="select" options={MOTIVO_DEMORA_OPTIONS} minWidth={180} onSave={v => patchField(f.id, 'motivo_demora', v)} stickyStyle={stickyTdStyle('motivo_demora')} />;
+                        })()}
                         {vis('fecha_contabilizado') && (() => {
                           const disabled = Boolean(f.fecha_de_dev_a_recepcion);
                           return disabled ? td('fecha_contabilizado', f.fecha_contabilizado?.slice(0,10) || '—', { color: '#777' }) : <EditCell value={f.fecha_contabilizado?.slice(0,10)} type="date" minWidth={120} onSave={v => patchField(f.id, 'fecha_contabilizado', v)} stickyStyle={stickyTdStyle('fecha_contabilizado')} />;
@@ -1208,46 +1328,34 @@ export default function Gestion() {
                           return disabled ? td('doc_contable', f.doc_contable || '—', { color: '#777' }) : <EditCell value={f.doc_contable} type="text" minWidth={110} onSave={v => patchField(f.id, 'doc_contable', v)} stickyStyle={stickyTdStyle('doc_contable')} />;
                         })()}
                         {vis('dias')                   && td('dias', countBusinessDaysSince(f.fecha_emision) ?? '—', { minWidth: 70, textAlign: 'center', color: '#333' })}
-                        {vis('fecha_entrega_tesoreria') && (() => {
-                          const disabled = Boolean(f.fecha_de_dev_a_recepcion);
-                          return disabled ? td('fecha_entrega_tesoreria', f.fecha_entrega_tesoreria?.slice(0,10) || '—', { color: '#777' }) : <EditCell value={f.fecha_entrega_tesoreria?.slice(0,10)} type="date" minWidth={130} onSave={v => patchField(f.id, 'fecha_entrega_tesoreria', v, { estado: 'EN_REVISION' })} stickyStyle={stickyTdStyle('fecha_entrega_tesoreria')} />;
-                        })()}
-                        {vis('fecha_de_dev_a_recepcion') && (() => {
-                          const disabled = Boolean(f.fecha_entrega_tesoreria) || Boolean(f.fecha_de_dev_a_recepcion);
-                          return disabled ? td('fecha_de_dev_a_recepcion', f.fecha_de_dev_a_recepcion?.slice(0,10) || '—', { color: '#777' }) : <EditCell value={f.fecha_de_dev_a_recepcion?.slice(0,10)} type="date" minWidth={130} onSave={v => patchField(f.id, 'fecha_de_dev_a_recepcion', v, { aceptacion_o_rechazo: 'Rechazo', estado: 'RECHAZADA' })} stickyStyle={stickyTdStyle('fecha_de_dev_a_recepcion')} />;
-                        })()}
-                        {vis('motivo_devolucion') && (() => {
-                          const disabled = Boolean(f.fecha_entrega_tesoreria) || Boolean(f.fecha_de_dev_a_recepcion);
-                          return disabled ? td('motivo_devolucion', f.motivo_devolucion || '—', { color: '#777' }) : <EditCell value={f.motivo_devolucion}      type="textarea" minWidth={150} onSave={v => patchField(f.id, 'motivo_devolucion', v)} stickyStyle={stickyTdStyle('motivo_devolucion')} />;
-                        })()}
-                        {vis('fecha_envio_rechazo_recepcion_al_cliente') && (() => {
-                          const disabled = Boolean(f.fecha_entrega_tesoreria) || Boolean(f.fecha_de_dev_a_recepcion);
-                          return disabled ? td('fecha_envio_rechazo_recepcion_al_cliente', f.fecha_envio_rechazo_recepcion_al_cliente?.slice(0,10) || '—', { color: '#777' }) : <EditCell value={f.fecha_envio_rechazo_recepcion_al_cliente?.slice(0,10)} type="date" minWidth={140} onSave={v => patchField(f.id, 'fecha_envio_rechazo_recepcion_al_cliente', v)} stickyStyle={stickyTdStyle('fecha_envio_rechazo_recepcion_al_cliente')} />;
-                        })()}
-                        {vis('acuse_recibido_dian')  && <EditCell value={f.acuse_recibido_dian}    type="select" options={SI_NO} minWidth={90}  onSave={v => patchField(f.id, 'acuse_recibido_dian', v)} stickyStyle={stickyTdStyle('acuse_recibido_dian')} />}
+                        {vis('fecha_entrega_tesoreria') && <EditCell value={f.fecha_entrega_tesoreria} type="text" minWidth={130} onSave={v => patchField(f.id, 'fecha_entrega_tesoreria', v, { estado: 'EN_REVISION' })} stickyStyle={stickyTdStyle('fecha_entrega_tesoreria')} />}
+                        {vis('fecha_de_dev_a_recepcion') && <EditCell value={f.fecha_de_dev_a_recepcion?.slice(0,10)} type="date" minWidth={130} onSave={v => patchField(f.id, 'fecha_de_dev_a_recepcion', v, { aceptacion_o_rechazo: 'Rechazo', estado: 'RECHAZADA' })} stickyStyle={stickyTdStyle('fecha_de_dev_a_recepcion')} />}
+                        {vis('motivo_devolucion') && <EditCell value={f.motivo_devolucion} type="select" options={MOTIVO_DEVOLUCION_OPTIONS} minWidth={200} onSave={v => patchField(f.id, 'motivo_devolucion', v)} stickyStyle={stickyTdStyle('motivo_devolucion')} />}
+                        {vis('fecha_envio_rechazo_recepcion_al_cliente') && <EditCell value={f.fecha_envio_rechazo_recepcion_al_cliente?.slice(0,10)} type="date" minWidth={140} onSave={v => patchField(f.id, 'fecha_envio_rechazo_recepcion_al_cliente', v)} stickyStyle={stickyTdStyle('fecha_envio_rechazo_recepcion_al_cliente')} />}
+                        {vis('forma_de_pago')   && <EditCell value={f.forma_de_pago}   type="select" options={['','Crédito','Contado']} minWidth={110} onSave={v => patchField(f.id, 'forma_de_pago', v)} stickyStyle={stickyTdStyle('forma_de_pago')} />}
+                        {vis('acuse_recibido_dian')  && <EditCell value={f.acuse_recibido_dian?.slice(0,10)}    type="date" minWidth={120} onSave={v => patchField(f.id, 'acuse_recibido_dian', v)} stickyStyle={stickyTdStyle('acuse_recibido_dian')} />}
                         {vis('recibo_de_mercancia') && (() => {
                           const disabled = Boolean(f.fecha_de_dev_a_recepcion);
-                          return disabled ? td('recibo_de_mercancia', f.recibo_de_mercancia || '—', { color: '#777' }) : <EditCell value={f.recibo_de_mercancia} type="select" options={SI_NO} minWidth={90}  onSave={v => patchField(f.id, 'recibo_de_mercancia', v)} stickyStyle={stickyTdStyle('recibo_de_mercancia')} />;
-                        })()}
-                        {vis('aceptacion_o_rechazo') && (() => {
-                          const acceptanceValue = f.fecha_de_dev_a_recepcion ? 'Rechazo' : f.aceptacion_o_rechazo;
-                          return f.fecha_de_dev_a_recepcion ? td('aceptacion_o_rechazo', acceptanceValue, { color: '#b91c1c', fontWeight: 700 }) : <EditCell value={f.aceptacion_o_rechazo} type="select" options={['','Aceptación','Rechazo']} minWidth={110} onSave={v => patchField(f.id, 'aceptacion_o_rechazo', v)} stickyStyle={stickyTdStyle('aceptacion_o_rechazo')} />;
+                          return disabled ? td('recibo_de_mercancia', f.recibo_de_mercancia?.slice(0,10) || '—', { color: '#777' }) : <EditCell value={f.recibo_de_mercancia?.slice(0,10)} type="date" minWidth={120} onSave={v => patchField(f.id, 'recibo_de_mercancia', v)} stickyStyle={stickyTdStyle('recibo_de_mercancia')} />;
                         })()}
 
-                        {vis('evidencia_aceptacion_url') && (
-                          <EvidenciaCell
-                            facturaId={f.id}
-                            url={f.evidencia_aceptacion_url || null}
-                            onUpdate={url => setFacturas(prev => prev.map(r => r.id === f.id ? { ...r, evidencia_aceptacion_url: url || '' } : r))}
-                            stickyStyle={stickyTdStyle('evidencia_aceptacion_url')}
-                          />
-                        )}
+                        {vis('evidencia_aceptacion_url') && (() => {
+                          const bloqueado = f.forma_de_pago === 'Contado';
+                          return bloqueado
+                            ? td('evidencia_aceptacion_url', '—', { color: '#bbb', fontStyle: 'italic', fontSize: 11, minWidth: 130 })
+                            : (
+                              <EvidenciaCell
+                                facturaId={f.id}
+                                url={f.evidencia_aceptacion_url || null}
+                                onUpdate={url => setFacturas(prev => prev.map(r => r.id === f.id ? { ...r, evidencia_aceptacion_url: url || '' } : r))}
+                                stickyStyle={stickyTdStyle('evidencia_aceptacion_url')}
+                              />
+                            );
+                        })()}
 
                         {vis('cufe')            && td('cufe', f.cufe ? f.cufe.slice(0, 20) + '…' : '—', { fontFamily: 'monospace', color: '#777', fontSize: 10 })}
-                        {vis('forma_de_pago')   && <EditCell value={f.forma_de_pago}   type="select" options={['','Crédito','Contado','Transferencia','Cheque']} minWidth={110} onSave={v => patchField(f.id, 'forma_de_pago', v)} stickyStyle={stickyTdStyle('forma_de_pago')} />}
                         {vis('tipo_de_factura') && <EditCell value={f.tipo_de_factura} type="select" options={['','Electrónica','Física','Proforma']} minWidth={110} onSave={v => patchField(f.id, 'tipo_de_factura', v)} stickyStyle={stickyTdStyle('tipo_de_factura')} />}
-                        {vis('tiempo_promedio') && <EditCell value={f.tiempo_promedio} type="number" minWidth={90} onSave={v => patchField(f.id, 'tiempo_promedio', v)} stickyStyle={stickyTdStyle('tiempo_promedio')} />}
-                        {vis('tiempo_real')     && <EditCell value={f.tiempo_real}     type="number" minWidth={90} onSave={v => patchField(f.id, 'tiempo_real', v)} stickyStyle={stickyTdStyle('tiempo_real')} />}
+                        {vis('tiempo_real')     && <EditCell value={f.tiempo_real}     type="select" options={['', ...Array.from({ length: 20 }, (_, i) => String(i + 1))]} minWidth={90} onSave={v => patchField(f.id, 'tiempo_real', v)} stickyStyle={stickyTdStyle('tiempo_real')} />}
 
                         {vis('estado') && (() => {
                           const isOnlyBasic = !f.fecha_contabilizado && !f.doc_contable && !f.fecha_de_dev_a_recepcion;
